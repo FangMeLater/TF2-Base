@@ -95,12 +95,12 @@ bool CHudMedicChargeMeter::ShouldDraw( void )
 		return false;
 	}
 
-	if ( pWpn->GetWeaponID() != TF_WEAPON_MEDIGUN )
+	if ( pWpn->GetWeaponID() == TF_WEAPON_MEDIGUN || pWpn->GetWeaponID() == TF_WEAPON_BONESAW )
 	{
-		return false;
+		return CHudElement::ShouldDraw();
 	}
-
-	return CHudElement::ShouldDraw();
+	
+	return false;
 }
 
 //-----------------------------------------------------------------------------

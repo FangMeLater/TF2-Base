@@ -125,6 +125,10 @@ bool CTFHudWeaponAmmo::ShouldDraw( void )
 	{
 		return false;
 	}
+	
+	// Don't show for weapons that don't use any ammo
+	if ( !pWeapon->UsesPrimaryAmmo() )
+		return false;
 
 	return CHudElement::ShouldDraw();
 }
