@@ -155,9 +155,8 @@ void CTFAmmoPack::PackTouch( CBaseEntity *pOther )
 		bSuccess = true;
 	}
 
-	//int iMaxMetal = pTFPlayer->GetPlayerClass()->GetData()->m_aAmmoMax[TF_AMMO_METAL];
-	// Unlike other ammo, give fixed amount of metal that was given to us at spawn.
-	if ( pPlayer->GiveAmmo( m_iAmmo[TF_AMMO_METAL], TF_AMMO_METAL ) )
+	int iMetal = Clamp( m_iAmmo[TF_AMMO_METAL], 5 , 100 );
+	if ( pPlayer->GiveAmmo( iMetal, TF_AMMO_METAL ) )
 	{
 		bSuccess = true;
 	}
