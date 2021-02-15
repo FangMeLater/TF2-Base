@@ -919,6 +919,9 @@ void CTFPlayer::Regenerate( void )
 	{
 		m_Shared.RemoveCond( TF_COND_BURNING );
 	}
+	
+	//Fill Spy cloak
+	m_Shared.SetSpyCloakMeter( 100.0f );
 }
 
 //-----------------------------------------------------------------------------
