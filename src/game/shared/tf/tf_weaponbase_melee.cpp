@@ -196,6 +196,15 @@ void CTFWeaponBaseMelee::Swing( CTFPlayer *pPlayer )
 //-----------------------------------------------------------------------------
 void CTFWeaponBaseMelee::DoViewModelAnimation( void )
 {
+	if ( IsCurrentAttackACrit() )
+	{
+		if ( SendWeaponAnim( ACT_VM_SWINGHARD ) )
+		{
+			// check that weapon has the activity
+			return;
+		}
+	}
+
 	Activity act = ( m_iWeaponMode == TF_WEAPON_PRIMARY_MODE ) ? ACT_VM_HITCENTER : ACT_VM_SWINGHARD;
 	SendWeaponAnim( act );
 }
