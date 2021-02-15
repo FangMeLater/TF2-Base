@@ -412,7 +412,7 @@ void CObjectDispenser::DispenseThink( void )
 		{
 			CTFPlayer *pPlayer = ToTFPlayer( pListOfNearbyEntities[i] );
 
-			if ( !pPlayer || !pPlayer->IsAlive() )
+			if ( !pPlayer || !pPlayer->IsAlive() || !CouldHealTarget(pPlayer) )
 				continue;
 
 			DispenseAmmo( pPlayer );
