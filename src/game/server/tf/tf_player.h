@@ -172,6 +172,7 @@ public:
 	void				UpdateSkin( int iTeam );
 
 	virtual int			GiveAmmo( int iCount, int iAmmoIndex, bool bSuppressSound = false );
+	int					GetMaxAmmo( int iAmmoIndex );
 
 	bool				CanAttack( void );
 
