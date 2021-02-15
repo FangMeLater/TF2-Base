@@ -431,7 +431,7 @@ void CTFPlayer::MedicRegenThink( void )
 		{
 			// Heal faster if we haven't been in combat for a while
 			float flTimeSinceDamage = gpGlobals->curtime - GetLastDamageTime();
-			float flScale = RemapValClamped( flTimeSinceDamage, 5, 10, 1.0, 3.0 );
+			float flScale = RemapValClamped( flTimeSinceDamage, 5, 10, 1.0, 2.0 );
 
 			int iHealAmount = ceil(TF_MEDIC_REGEN_AMOUNT * flScale);
 			TakeHealth( iHealAmount, DMG_GENERIC );
