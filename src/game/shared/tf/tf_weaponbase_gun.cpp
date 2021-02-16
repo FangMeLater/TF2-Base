@@ -106,6 +106,8 @@ void CTFWeaponBaseGun::PrimaryAttack( void )
 	pPlayer->SetAnimation( PLAYER_ATTACK1 );
 
 	FireProjectile( pPlayer );
+	
+	m_flLastFireTime  = gpGlobals->curtime;
 
 	// Set next attack times.
 	m_flNextPrimaryAttack = gpGlobals->curtime + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeFireDelay;

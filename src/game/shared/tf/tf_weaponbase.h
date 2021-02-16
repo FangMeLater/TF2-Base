@@ -194,6 +194,8 @@ class CTFWeaponBase : public CBaseCombatWeapon
 	virtual void Operator_HandleAnimEvent( animevent_t *pEvent, CBaseCombatCharacter *pOperator );
 
 	virtual bool CanFireCriticalShot( bool bIsHeadshot = false ){ return true; }
+	
+	float				GetLastFireTime( void ) { return m_flLastFireTime; }
 
 // Server specific.
 #if !defined( CLIENT_DLL )
@@ -268,6 +270,8 @@ protected:
 	float			m_flLastCritCheckTime;
 	int				m_iLastCritCheckFrame;
 	int				m_iCurrentSeed;
+	
+	CNetworkVar(	float,	m_flLastFireTime );
 
 	char			m_szTracerName[MAX_TRACER_NAME];
 
