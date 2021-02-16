@@ -21,6 +21,7 @@
 #endif
 
 #define MAX_BARREL_SPIN_VELOCITY	20
+#define TF_MINIGUN_SPINUP_TIME 0.75f
 
 //=============================================================================
 //
@@ -176,9 +177,9 @@ void CTFMinigun::SharedAttack()
 		{
 			// Removed the need for cells to powerup the AC
 			WindUp();
-			m_flNextPrimaryAttack = gpGlobals->curtime + 1.0;
-			m_flNextSecondaryAttack = gpGlobals->curtime + 1.0;
-			m_flTimeWeaponIdle = gpGlobals->curtime + 1.0;
+			m_flNextPrimaryAttack = gpGlobals->curtime + TF_MINIGUN_SPINUP_TIME;
+			m_flNextSecondaryAttack = gpGlobals->curtime + TF_MINIGUN_SPINUP_TIME;
+			m_flTimeWeaponIdle = gpGlobals->curtime + TF_MINIGUN_SPINUP_TIME;
 			m_flStartedFiringAt = -1;
 			pPlayer->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRE );
 			break;
