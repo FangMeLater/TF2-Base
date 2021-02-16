@@ -85,6 +85,7 @@ public:
 	virtual bool		IsReadyToSpawn( void );
 	virtual bool		ShouldGainInstantSpawn( void );
 	virtual void		ResetScores( void );
+	virtual void		PlayerUse( void );
 
 	void				CreateViewModel( int iViewModel = 0 );
 	CBaseViewModel		*GetOffHandViewModel();

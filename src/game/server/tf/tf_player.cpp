@@ -85,6 +85,8 @@ ConVar tf_damage_range( "tf_damage_range", "0.5", FCVAR_DEVELOPMENTONLY );
 
 ConVar tf_max_voice_speak_delay( "tf_max_voice_speak_delay", "1.5", FCVAR_NOTIFY, "Max time after a voice command until player can do another one" );
 
+ConVar tf_allow_player_use( "tf_allow_player_use", "1", FCVAR_PROTECTED, "Allow players to execute + use while playing" );
+
 extern ConVar spec_freeze_time;
 extern ConVar spec_freeze_traveltime;
 extern ConVar sv_maxunlag;
@@ -4743,6 +4745,15 @@ void CTFPlayer::TeleportEffect( void )
 void CTFPlayer::RemoveTeleportEffect( void )
 {
 	m_Shared.RemoveCond( TF_COND_TELEPORTED );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Handles USE keypress
+//-----------------------------------------------------------------------------
+void CTFPlayer::PlayerUse( void )
+{
+	if ( tf_allow_player_use.GetBool() || IsInCommentaryMode() )
+		BaseClass::PlayerUse();
 }
 
 //-----------------------------------------------------------------------------
