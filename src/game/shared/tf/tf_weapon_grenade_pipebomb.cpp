@@ -533,16 +533,14 @@ int CTFGrenadePipebombProjectile::OnTakeDamage( const CTakeDamageInfo &info )
 	bool bSameTeam = ( info.GetAttacker()->GetTeamNumber() == GetTeamNumber() );
 
 
-	if ( m_bTouched && ( info.GetDamageType() & (DMG_BULLET|DMG_BUCKSHOT|DMG_BLAST) ) && bSameTeam == false )
+	if ( m_bTouched && ( info.GetDamageType() & (DMG_BULLET|DMG_BUCKSHOT|DMG_BLAST|DMG_CLUB|DMG_SLASH) ) && bSameTeam == false )
 	{
 		Vector vecForce = info.GetDamageForce();
-		if ( info.GetDamageType() & DMG_BULLET )
+		if ( info.GetDamageType() & DMG_BULLET|DMG_BUCKSHOT|DMG_BLAST|DMG_CLUB|DMG_SLASH )
 		{
 			vecForce *= tf_grenade_forcefrom_bullet.GetFloat();
-		}
-		else if ( info.GetDamageType() & DMG_BUCKSHOT )
-		{
-			vecForce *= tf_grenade_forcefrom_buckshot.GetFloat();
+			m_bFizzle = true;
+				Detonate();
 		}
 		else if ( info.GetDamageType() & DMG_BLAST )
 		{
