@@ -367,6 +367,8 @@ bool CTFWeaponBase::Holster( CBaseCombatWeapon *pSwitchingTo )
 	}
 #endif
 
+	AbortReload();
+
 	return BaseClass::Holster( pSwitchingTo );
 }
 
@@ -422,10 +424,8 @@ void CTFWeaponBase::PrimaryAttack( void )
 
 	BaseClass::PrimaryAttack();
 
-	if ( m_bReloadsSingly )
-	{
-		m_iReloadMode.Set( TF_RELOAD_START );
-	}
+	// Due to cl_autoreload we can now interrupt ANY reload.
+	AbortReload();
 }
 
 //-----------------------------------------------------------------------------
@@ -531,6 +531,10 @@ bool CTFWeaponBase::CalcIsAttackCriticalHelper()
 //-----------------------------------------------------------------------------
 bool CTFWeaponBase::Reload( void )
 {
+	// Sorry, people, no speeding it up.
+	if ( m_flNextPrimaryAttack > gpGlobals->curtime )
+		return false;
+
 	// If we're not already reloading, check to see if we have ammo to reload and check to see if we are max ammo.
 	if ( m_iReloadMode == TF_RELOAD_START ) 
 	{
@@ -559,6 +563,9 @@ void CTFWeaponBase::AbortReload( void )
 {
 	BaseClass::AbortReload();
 
+#ifndef CLIENT_DLL
+	StopWeaponSound( RELOAD );
+#endif
 	m_iReloadMode.Set( TF_RELOAD_START );
 }
 
@@ -760,7 +767,7 @@ bool CTFWeaponBase::DefaultReload( int iClipSize1, int iClipSize2, int iActivity
 	// First, see if we have a reload animation
 	if ( SendWeaponAnim( iActivity ) )
 	{
-		flReloadTime = SequenceDuration();
+		flReloadTime = SequenceDuration() - 0.2;
 	}
 	else
 	{
@@ -878,24 +885,21 @@ void CTFWeaponBase::ItemBusyFrame( void )
 		m_bInAttack2 = false;
 	}
 
-	// Interrupt a reload on reload singly weapons.
-	if ( m_bReloadsSingly )
+	// Interrupt a reload.
+	CTFPlayer *pPlayer = GetTFPlayerOwner();
+	if ( pPlayer )
 	{
-		CTFPlayer *pPlayer = GetTFPlayerOwner();
-		if ( pPlayer )
+		if ( pPlayer->m_nButtons & IN_ATTACK )
 		{
-			if ( pPlayer->m_nButtons & IN_ATTACK )
+			if ( ( ( ReloadsSingly() && m_iReloadMode != TF_RELOAD_START ) || m_bInReload ) && Clip1() > 0 )
 			{
-				if ( ( m_iReloadMode != TF_RELOAD_START ) && Clip1() > 0 )
-				{
-					m_iReloadMode.Set( TF_RELOAD_START );
-					m_bInReload = false;
+				AbortReload();
 
-					pPlayer->m_flNextAttack = gpGlobals->curtime;
-					m_flNextPrimaryAttack = gpGlobals->curtime;
+	
+				pPlayer->m_flNextAttack = gpGlobals->curtime;
+				m_flNextPrimaryAttack = gpGlobals->curtime;
 
-					SetWeaponIdleTime( gpGlobals->curtime + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeIdle );
-				}
+				SetWeaponIdleTime( gpGlobals->curtime + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeIdle );
 			}
 		}
 	}
@@ -1028,6 +1032,46 @@ void CTFWeaponBase::SetWeaponVisible( bool visible )
 	UpdateVisibility();
 #endif
 
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: If the current weapon has more ammo, reload it. Otherwise, switch 
+//			to the next best weapon we've got. Returns true if it took any action.
+//-----------------------------------------------------------------------------
+bool CTFWeaponBase::ReloadOrSwitchWeapons( void )
+{
+	CTFPlayer *pOwner = ToTFPlayer( GetOwner() );
+	Assert( pOwner );
+
+	m_bFireOnEmpty = false;
+
+	// If we don't have any ammo, switch to the next best weapon
+	if ( !HasAnyAmmo() && m_flNextPrimaryAttack < gpGlobals->curtime && m_flNextSecondaryAttack < gpGlobals->curtime )
+	{
+		// weapon isn't useable, switch.
+		if ( ( (GetWeaponFlags() & ITEM_FLAG_NOAUTOSWITCHEMPTY) == false ) && ( g_pGameRules->SwitchToNextBestWeapon( pOwner, this ) ) )
+		{
+			m_flNextPrimaryAttack = gpGlobals->curtime + 0.3;
+			return true;
+		}
+	}
+	else
+	{
+		// Weapon is useable. Reload if empty and weapon has waited as long as it has to after firing
+		// Also auto-reload if owner has auto-reload enabled.
+		if ( UsesClipsForAmmo1() && !AutoFiresFullClip() && 
+			(m_iClip1 == 0 || ( pOwner && pOwner->ShouldAutoReload() && m_iClip1 < GetMaxClip1() ) ) && 
+			( GetWeaponFlags() & ITEM_FLAG_NOAUTORELOAD ) == false && 
+			m_flNextPrimaryAttack < gpGlobals->curtime && 
+			m_flNextSecondaryAttack < gpGlobals->curtime )
+		{
+			// if we're successfully reloading, we're done
+			if ( Reload() )
+				return true;
+		}
+	}
+
+	return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -1530,7 +1574,7 @@ acttable_t CTFWeaponBase::m_acttablePrimary[] =
 	{ ACT_MP_STAND_IDLE,		ACT_MP_STAND_PRIMARY,				false },
 	{ ACT_MP_CROUCH_IDLE,		ACT_MP_CROUCH_PRIMARY,				false },
 	{ ACT_MP_DEPLOYED,			ACT_MP_DEPLOYED_PRIMARY,			false },
-	{ ACT_MP_CROUCH_DEPLOYED, 			ACT_MP_CROUCHWALK_DEPLOYED, false },
+	{ ACT_MP_CROUCH_DEPLOYED, 	ACT_MP_CROUCHWALK_DEPLOYED, 		false },
 	{ ACT_MP_RUN,				ACT_MP_RUN_PRIMARY,					false },
 	{ ACT_MP_WALK,				ACT_MP_WALK_PRIMARY,				false },
 	{ ACT_MP_AIRWALK,			ACT_MP_AIRWALK_PRIMARY,				false },
