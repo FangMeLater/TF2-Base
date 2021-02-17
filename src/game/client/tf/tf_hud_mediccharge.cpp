@@ -63,6 +63,7 @@ CHudMedicChargeMeter::CHudMedicChargeMeter( const char *pElementName ) : CHudEle
 
 	m_bCharged = false;
 	m_flLastChargeValue = 0;
+	SetDialogVariable("charge", 0);
 }
 
 //-----------------------------------------------------------------------------
@@ -127,6 +128,8 @@ void CHudMedicChargeMeter::OnTick( void )
 
 	if ( flCharge != m_flLastChargeValue )
 	{
+		SetDialogVariable( "charge", (int)( flCharge * 100 ) );
+		
 		if ( m_pChargeMeter )
 		{
 			m_pChargeMeter->SetProgress( flCharge );
