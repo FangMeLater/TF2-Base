@@ -277,9 +277,17 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 			engine->ExecuteClientCmd( "lastinv" );
 			return 0;
 
-		default:
-			return 1;	// key not handled
+		//default:
+			//return 1;	// key not handled
 		}
+
+		if ( pszCurrentBinding && FStrEq( pszCurrentBinding, "+reload" ) )
+		{
+			ToggleDisguiseTeam();
+			return 0;
+		}
+
+		return 1;	// key not handled
 	}
 	
 
@@ -394,6 +402,24 @@ void CHudMenuSpyDisguise::SetVisible( bool state )
 
 		SetDialogVariable( "lastinv", key );
 
+		// set the %disguiseteam% dialog var
+		key = engine->Key_LookupBinding("disguiseteam");
+		if (!key)
+		{
+			key = "< not bound >";
+		}
+
+		SetDialogVariable("disguiseteam", key);
+		
+		// set the %reload% dialog var
+		key = engine->Key_LookupBinding("+reload");
+		if (!key)
+		{
+			key = "< not bound >";
+		}
+
+		SetDialogVariable("reload", key);
+
 		HideLowerPriorityHudElementsInGroup( "mid" );
 	}
 	else
@@ -402,4 +428,12 @@ void CHudMenuSpyDisguise::SetVisible( bool state )
 	}
 
 	BaseClass::SetVisible( state );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CHudMenuSpyDisguise::DisguiseTeam(const CCommand &args)
+{
+	ToggleDisguiseTeam();
 }
