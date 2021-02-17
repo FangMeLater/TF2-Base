@@ -1695,7 +1695,7 @@ static Vector TF_TAUNTCAM_HULL_MAX( 9.0f, 9.0f, 9.0f );
 
 static ConVar tf_tauntcam_yaw( "tf_tauntcam_yaw", "0", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 static ConVar tf_tauntcam_pitch( "tf_tauntcam_pitch", "0", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
-static ConVar tf_tauntcam_dist( "tf_tauntcam_dist", "110", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
+static ConVar tf_tauntcam_dist( "tf_tauntcam_dist", "150", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 
 //-----------------------------------------------------------------------------
 // Purpose:
@@ -1776,7 +1776,9 @@ void C_TFPlayer::HandleTaunting( void )
 	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
 
 	// Clear the taunt slot.
-	if ( !m_bWasTaunting && m_Shared.InCond( TF_COND_TAUNTING ) )
+	if ( !m_bWasTaunting && (
+		m_Shared.InCond( TF_COND_TAUNTING ) ||
+		m_Shared.IsLoser() ) )
 	{
 		m_bWasTaunting = true;
 
@@ -1787,7 +1789,9 @@ void C_TFPlayer::HandleTaunting( void )
 		}
 	}
 
-	if ( m_bWasTaunting && !m_Shared.InCond( TF_COND_TAUNTING ) )
+		if ( m_bWasTaunting && (
+		!m_Shared.InCond( TF_COND_TAUNTING ) &&
+		!m_Shared.IsLoser() ) )
 	{
 		m_bWasTaunting = false;
 
@@ -2962,10 +2966,7 @@ void C_TFPlayer::ClientPlayerRespawn( void )
 		//ResetLatched();
 
 		// Reset the camera.
-		if ( m_bWasTaunting )
-		{
-			TurnOffTauntCam();
-		}
+		HandleTaunting();
 
 		ResetToneMapping(1.0);
 

@@ -60,6 +60,7 @@ ConVar tf_spy_cloak_no_attack_time( "tf_spy_cloak_no_attack_time", "2.0", FCVAR_
 //ConVar tf_spy_stealth_blink_scale( "tf_spy_stealth_blink_scale", "0.85", FCVAR_DEVELOPMENTONLY, "percentage visible scalar after being hit the spy blinks into view" );
 
 ConVar tf_damage_disablespread( "tf_damage_disablespread", "0", FCVAR_NOTIFY | FCVAR_REPLICATED, "Toggles the random damage spread applied to all player damage." );
+ConVar tf_always_loser( "tf_always_loser", "0", FCVAR_REPLICATED | FCVAR_CHEAT, "Force loserstate to true." );
 
 #define TF_SPY_STEALTH_BLINKTIME   0.3f
 #define TF_SPY_STEALTH_BLINKSCALE  0.85f
@@ -328,6 +329,16 @@ void CTFPlayerShared::OnDataChanged( void )
 		if( pWeapon )
 		{
 			pWeapon->SetModelIndex( pWeapon->GetWorldModelIndex() );
+		}
+	}
+	
+	if ( IsLoser() )
+	{
+		C_BaseCombatWeapon *pWeapon = GetActiveWeapon();
+		if ( pWeapon && !pWeapon->IsEffectActive( EF_NODRAW ) )
+		{
+			pWeapon->SetWeaponVisible( false );
+			pWeapon->UpdateVisibility();
 		}
 	}
 }
@@ -1664,6 +1675,36 @@ CTFWeaponBase *CTFPlayerShared::GetActiveTFWeapon() const
 bool CTFPlayerShared::IsAlly( CBaseEntity *pEntity )
 {
 	return ( pEntity->GetTeamNumber() == m_pOuter->GetTeamNumber() );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Used to determine if player should do loser animations.
+//-----------------------------------------------------------------------------
+bool CTFPlayerShared::IsLoser( void )
+{
+	if ( !m_pOuter->IsAlive() )
+		return false;
+
+	if ( tf_always_loser.GetBool() )
+		return true;
+
+	if ( TFGameRules() && TFGameRules()->State_Get() == GR_STATE_TEAM_WIN )
+	{
+		int iWinner = TFGameRules()->GetWinningTeam();
+		if ( iWinner != m_pOuter->GetTeamNumber() )
+		{
+			if ( m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
+			{
+				if ( InCond(TF_COND_DISGUISED ) )
+				{
+					return (iWinner != GetDisguiseTeam());
+				}
+			}
+			return true;
+		}
+	}
+
+	return false;
 }
 
 //-----------------------------------------------------------------------------

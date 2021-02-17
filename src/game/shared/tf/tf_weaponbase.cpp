@@ -1397,6 +1397,21 @@ int	CTFWeaponBase::InternalDrawModel( int flags )
 	return ret;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose:
+// ----------------------------------------------------------------------------
+bool CTFWeaponBase::ShouldDraw( void )
+{
+	C_TFPlayer *pOwner = GetTFPlayerOwner();
+	if ( pOwner )
+	{
+		if ( pOwner->m_Shared.IsLoser() )
+			return false;
+	}
+
+	return BaseClass::ShouldDraw();
+}
+
 void CTFWeaponBase::ProcessMuzzleFlashEvent( void )
 {
 	C_BaseEntity *pAttachEnt;
@@ -1499,7 +1514,8 @@ void CTFWeaponBase::OnDataChanged( DataUpdateType_t type )
 	if ( pOwner && pOwner->IsAlive() == true )
 	{
 		//And he is NOT taunting
-		if ( pOwner->m_Shared.InCond ( TF_COND_TAUNTING ) == false )
+		if ( pOwner->m_Shared.InCond ( TF_COND_TAUNTING ) == false &&
+			pOwner->m_Shared.IsLoser() == false )
 		{
 			//Then why the hell am I NODRAW?
 			if ( pOwner->GetActiveWeapon() == this && IsEffectActive( EF_NODRAW ) )
@@ -1589,6 +1605,7 @@ acttable_t CTFWeaponBase::m_acttablePrimary[] =
 	{ ACT_MP_JUMP_LAND,			ACT_MP_JUMP_LAND_PRIMARY,			false },
 	{ ACT_MP_SWIM,				ACT_MP_SWIM_PRIMARY,				false },
 	{ ACT_MP_SWIM_DEPLOYED,		ACT_MP_SWIM_DEPLOYED_PRIMARY,		false },
+	{ ACT_MP_DOUBLEJUMP_CROUCH, ACT_MP_DOUBLEJUMP_CROUCH_PRIMARY,   false },
 
 	{ ACT_MP_ATTACK_STAND_PRIMARYFIRE,		ACT_MP_ATTACK_STAND_PRIMARY,	false },
 	{ ACT_MP_ATTACK_STAND_PRIMARYFIRE_DEPLOYED,		ACT_MP_ATTACK_STAND_PRIMARY_DEPLOYED, false },
@@ -1645,6 +1662,7 @@ acttable_t CTFWeaponBase::m_acttableSecondary[] =
 	{ ACT_MP_JUMP_FLOAT,		ACT_MP_JUMP_FLOAT_SECONDARY,		false },
 	{ ACT_MP_JUMP_LAND,			ACT_MP_JUMP_LAND_SECONDARY,			false },
 	{ ACT_MP_SWIM,				ACT_MP_SWIM_SECONDARY,				false },
+	{ ACT_MP_DOUBLEJUMP_CROUCH, ACT_MP_DOUBLEJUMP_CROUCH_SECONDARY, false },
 
 	{ ACT_MP_ATTACK_STAND_PRIMARYFIRE,		ACT_MP_ATTACK_STAND_SECONDARY,		false },
 	{ ACT_MP_ATTACK_CROUCH_PRIMARYFIRE,		ACT_MP_ATTACK_CROUCH_SECONDARY,		false },
@@ -1699,6 +1717,7 @@ acttable_t CTFWeaponBase::m_acttableMelee[] =
 	{ ACT_MP_JUMP_FLOAT,		ACT_MP_JUMP_FLOAT_MELEE,		false },
 	{ ACT_MP_JUMP_LAND,			ACT_MP_JUMP_LAND_MELEE,			false },
 	{ ACT_MP_SWIM,				ACT_MP_SWIM_MELEE,				false },
+	{ ACT_MP_DOUBLEJUMP_CROUCH, ACT_MP_DOUBLEJUMP_CROUCH_MELEE, false },
 
 	{ ACT_MP_ATTACK_STAND_PRIMARYFIRE,		ACT_MP_ATTACK_STAND_MELEE,		false },
 	{ ACT_MP_ATTACK_CROUCH_PRIMARYFIRE,		ACT_MP_ATTACK_CROUCH_MELEE,		false },

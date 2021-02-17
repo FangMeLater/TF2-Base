@@ -162,6 +162,8 @@ public:
 
 	// Utility.
 	bool	IsAlly( CBaseEntity *pEntity );
+	
+	bool	IsLoser( void );
 
 	// Separation force
 	bool	IsSeparationEnabled( void ) const	{ return m_bEnableSeparation; }
