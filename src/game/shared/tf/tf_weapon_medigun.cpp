@@ -496,7 +496,7 @@ void CWeaponMedigun::HealTargetThink( void )
 	float flTime = gpGlobals->curtime - pOwner->GetTimeBase();
 	if ( flTime > 5.0f || !AllowedToHealTarget(pTarget) )
 	{
-		RemoveHealingTarget( true );
+		RemoveHealingTarget( false );
 	}
 
 	SetNextThink( gpGlobals->curtime + 0.2f, s_pszMedigunHealTargetThink );
@@ -735,7 +735,7 @@ bool CWeaponMedigun::Lower( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CWeaponMedigun::RemoveHealingTarget( bool bStopHealingSelf )
+void CWeaponMedigun::RemoveHealingTarget( bool bSilent )
 {
 	CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
 	if ( !pOwner )
@@ -747,13 +747,15 @@ void CWeaponMedigun::RemoveHealingTarget( bool bStopHealingSelf )
 		// HACK: For now, just deal with players
 		if ( m_hHealingTarget->IsPlayer() )
 		{
-			CTFPlayer *pOwner = ToTFPlayer( GetOwnerEntity() );
 			CTFPlayer *pTFPlayer = ToTFPlayer( m_hHealingTarget );
 			pTFPlayer->m_Shared.StopHealing( pOwner );
 			pTFPlayer->m_Shared.RecalculateInvuln( false );
 
-			pOwner->SpeakConceptIfAllowed( MP_CONCEPT_MEDIC_STOPPEDHEALING, pTFPlayer->IsAlive() ? "healtarget:alive" : "healtarget:dead" );
-			pTFPlayer->SpeakConceptIfAllowed( MP_CONCEPT_HEALTARGET_STOPPEDHEALING );
+			if ( !bSilent )
+			{
+				pOwner->SpeakConceptIfAllowed( MP_CONCEPT_MEDIC_STOPPEDHEALING, pTFPlayer->IsAlive() ? "healtarget:alive" : "healtarget:dead" );
+				pTFPlayer->SpeakConceptIfAllowed( MP_CONCEPT_HEALTARGET_STOPPEDHEALING );
+			}
 		}
 	}
 
@@ -764,7 +766,7 @@ void CWeaponMedigun::RemoveHealingTarget( bool bStopHealingSelf )
 	m_hHealingTarget.Set( NULL );
 
 	// Stop the welding animation
-	if ( m_bHealing )
+	if ( m_bHealing && !bSilent )
 	{
 		SendWeaponAnim( ACT_MP_ATTACK_STAND_POSTFIRE );
 		pOwner->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_POST );
@@ -1028,8 +1030,11 @@ void CWeaponMedigun::OnDataChanged( DataUpdateType_t updateType )
 	else
 	{
 		ClientThinkList()->SetNextClientThink( GetClientHandle(), CLIENT_THINK_NEVER );
-		m_bPlayingSound = false;
-		StopHealSound( true, false );
+		if ( m_bPlayingSound )
+		{
+			m_bPlayingSound = false;
+			StopHealSound( true, false );
+		}
 
 		// Are they holding the attack button but not healing anyone? Give feedback.
 		if ( IsActiveByLocalPlayer() && GetOwner() && GetOwner()->IsAlive() && m_bAttacking && GetOwner() == C_BasePlayer::GetLocalPlayer() && CanAttack() == true )
@@ -1065,8 +1070,11 @@ void CWeaponMedigun::ClientThink()
 	if ( !pFiringPlayer || pFiringPlayer->IsPlayerDead() || pFiringPlayer->IsDormant() )
 	{
 		ClientThinkList()->SetNextClientThink( GetClientHandle(), CLIENT_THINK_NEVER );
-		m_bPlayingSound = false;
-		StopHealSound();
+		if ( m_bPlayingSound )
+		{
+			m_bPlayingSound = false;
+			StopHealSound( true, false );
+		}
 		return;
 	}
 		
