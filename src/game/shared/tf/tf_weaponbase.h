@@ -216,6 +216,9 @@ class CTFWeaponBase : public CBaseCombatWeapon
 // Client specific.
 #else
 
+	bool			IsFirstPersonView();
+	bool			UsingViewModel();
+
 	virtual void	ProcessMuzzleFlashEvent( void );
 	virtual int		InternalDrawModel( int flags );
 	virtual bool	ShouldDraw( void );
@@ -280,6 +283,7 @@ protected:
 
 #ifdef CLIENT_DLL
 	bool m_bOldResetParity;
+	int m_iEjectBrassAttachpoint;
 #endif
 
 	CNetworkVar(	bool,	m_bReloadedThroughAnimEvent );

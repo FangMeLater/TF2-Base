@@ -14,6 +14,7 @@
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
 #include "soundenvelope.h"
+#include "clientmode_tf.h"
 
 // Server specific.
 #else
@@ -138,6 +139,17 @@ void CTFMinigun::Precache( void )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFMinigun::ItemPostFrame( void )
+{
+	// Prevent base code from ever playing empty sounds, minigun handles them manually.
+	m_flNextEmptySoundTime = gpGlobals->curtime + 1.0;
+
+	BaseClass::ItemPostFrame();
+}
+
+//-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
 void CTFMinigun::PrimaryAttack()
@@ -180,7 +192,7 @@ void CTFMinigun::SharedAttack()
 			m_flNextPrimaryAttack = gpGlobals->curtime + TF_MINIGUN_SPINUP_TIME;
 			m_flNextSecondaryAttack = gpGlobals->curtime + TF_MINIGUN_SPINUP_TIME;
 			m_flTimeWeaponIdle = gpGlobals->curtime + TF_MINIGUN_SPINUP_TIME;
-			m_flStartedFiringAt = -1;
+			m_flStartedFiringAt = -1.f;
 			pPlayer->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_PRE );
 			break;
 		}
@@ -636,6 +648,12 @@ void CTFMinigun::StartBrassEffect()
 	if ( !pEffectOwner )
 		return;
 
+	if ( UsingViewModel() && !g_pClientMode->ShouldDrawViewModel() )
+	{
+		// Prevent effects when the ViewModel is hidden with r_drawviewmodel=0
+		return;
+	}
+
 	// Try and setup the attachment point if it doesn't already exist.
 	// This caching will mess up if we go third person from first - we only do this in taunts and don't fire so we should
 	// be okay for now.
@@ -659,6 +677,12 @@ void CTFMinigun::StartMuzzleEffect()
 	C_BaseEntity *pEffectOwner = GetWeaponForEffect();
 	if ( !pEffectOwner )
 		return;
+
+	if ( UsingViewModel() && !g_pClientMode->ShouldDrawViewModel() )
+	{
+		// Prevent effects when the ViewModel is hidden with r_drawviewmodel=0
+		return;
+	}
 
 	// Try and setup the attachment point if it doesn't already exist.
 	// This caching will mess up if we go third person from first - we only do this in taunts and don't fire so we should

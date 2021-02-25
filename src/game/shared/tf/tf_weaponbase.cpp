@@ -190,6 +190,10 @@ CTFWeaponBase::CTFWeaponBase()
 	m_bCurrentAttackIsCrit = false;
 	m_iCurrentSeed = -1;
 	m_flLastFireTime = 0.0f;
+
+#ifdef CLIENT_DLL
+	m_iEjectBrassAttachpoint = -2;
+#endif // CLIENT_DLL
 }
 
 // -----------------------------------------------------------------------------
@@ -1300,10 +1304,37 @@ void TE_DynamicLight( IRecipientFilter& filter, float delay,
 //
 // TFWeaponBase functions (Client specific).
 //
+bool CTFWeaponBase::IsFirstPersonView()
+{
+	C_TFPlayer *pPlayerOwner = GetTFPlayerOwner();
+	if ( pPlayerOwner == NULL )
+	{
+		return false;
+	}
+	return pPlayerOwner->InFirstPersonView();
+}
+
+bool CTFWeaponBase::UsingViewModel()
+{
+	C_TFPlayer *pPlayerOwner = GetTFPlayerOwner();
+	bool bIsFirstPersonView = IsFirstPersonView();
+	bool bUsingViewModel = bIsFirstPersonView && ( pPlayerOwner != NULL ) && !pPlayerOwner->ShouldDrawThisPlayer();
+	return bUsingViewModel;
+}
+
 void CTFWeaponBase::CreateMuzzleFlashEffects( C_BaseEntity *pAttachEnt, int nIndex )
 {
 	Vector vecOrigin;
 	QAngle angAngles;
+
+	if ( !pAttachEnt )
+		return;
+
+	if ( UsingViewModel() && !g_pClientMode->ShouldDrawViewModel() )
+	{
+		// Prevent effects when the ViewModel is hidden with r_drawviewmodel=0
+		return;
+	}
 
 	int iMuzzleFlashAttachment = pAttachEnt->LookupAttachment( "muzzle" );
 
@@ -1312,9 +1343,7 @@ void CTFWeaponBase::CreateMuzzleFlashEffects( C_BaseEntity *pAttachEnt, int nInd
 	const char *pszMuzzleFlashParticleEffect = GetMuzzleFlashParticleEffect();
 
 	// Pick the right muzzleflash (3rd / 1st person)
-	CBasePlayer *pLocalPlayer = C_BasePlayer::GetLocalPlayer();
-	if ( pLocalPlayer && (GetOwnerEntity() == pLocalPlayer || 
-		(pLocalPlayer->GetObserverMode() == OBS_MODE_IN_EYE && pLocalPlayer->GetObserverTarget() == GetOwnerEntity())) )
+	if ( IsFirstPersonView() )
 	{
 		pszMuzzleFlashEffect = GetMuzzleFlashEffectName_1st();
 	}
@@ -2136,12 +2165,34 @@ int CTFWeaponBase::GetSkin()
 	return nSkin;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 bool CTFWeaponBase::OnFireEvent( C_BaseViewModel *pViewModel, const Vector& origin, const QAngle& angles, int event, const char *options )
 {
 	if( event == 6002 )
 	{
+		if ( UsingViewModel() && !g_pClientMode->ShouldDrawViewModel() )
+		{
+			// Prevent effects when the ViewModel is hidden with r_drawviewmodel=0
+			return true;
+		}
+
 		CEffectData data;
-		pViewModel->GetAttachment( atoi(options), data.m_vOrigin, data.m_vAngles );
+		// Look for 'eject_brass' attachment first instead of using options which is a seemingly magic number
+		if ( m_iEjectBrassAttachpoint == -2 )
+		{
+			m_iEjectBrassAttachpoint = pViewModel->LookupAttachment( "eject_brass" );
+		}
+
+		if ( m_iEjectBrassAttachpoint > 0 )
+		{
+			pViewModel->GetAttachment( m_iEjectBrassAttachpoint, data.m_vOrigin, data.m_vAngles );
+		}
+		else
+		{
+			pViewModel->GetAttachment( atoi(options), data.m_vOrigin, data.m_vAngles );
+		}
 		data.m_nHitBox = GetWeaponID();
 		DispatchEffect( "TF_EjectBrass", data );
 		return true;
