@@ -101,6 +101,8 @@ public:
 	void	OnConditionRemoved( int nCond );
 	void	ConditionThink( void );
 	float	GetConditionDuration( int nCond );
+	// Condition helpers
+	bool	IsStealthed( void );
 
 	void	ConditionGameRulesThink( void );
 
@@ -206,6 +208,7 @@ private:
 	void OnAddBurning( void );
 	void OnAddDisguising( void );
 	void OnAddDisguised( void );
+	void OnAddTaunting( void );
 
 	void OnRemoveZoomed( void );
 	void OnRemoveBurning( void );
@@ -214,6 +217,7 @@ private:
 	void OnRemoveDisguising( void );
 	void OnRemoveInvulnerable( void );
 	void OnRemoveTeleported( void );
+	void OnRemoveTaunting( void );
 
 	float GetCritMult( void );
 

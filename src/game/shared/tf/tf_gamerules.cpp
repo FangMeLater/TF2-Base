@@ -1860,6 +1860,25 @@ const char *CTFGameRules::GetKillingWeaponName( const CTakeDamageInfo &info, CTF
 
 	const char *killer_weapon_name = "world";
 
+	// Handle special kill types first.
+	const char *pszCustomKill = NULL;
+	
+	switch ( info.GetDamageCustom() )
+	{
+		case TF_DMG_CUSTOM_TAUNTATK_HADOUKEN:
+			pszCustomKill = "taunt_pyro";
+			break;
+		case TF_DMG_CUSTOM_TAUNTATK_HIGH_NOON:
+			pszCustomKill = "taunt_heavy";
+			break;
+		case TF_DMG_CUSTOM_TAUNTATK_FENCING:
+			pszCustomKill = "taunt_spy";
+			break;
+	}
+
+	if ( pszCustomKill != NULL )
+		return pszCustomKill;
+		
 	if ( info.GetDamageCustom() == TF_DMG_CUSTOM_BURNING )
 	{
 		// special-case burning damage, since persistent burning damage may happen after attacker has switched weapons

@@ -600,6 +600,12 @@ void CTFPlayer::PostThink()
 	m_angEyeAngles = EyeAngles();
 
     m_PlayerAnimState->Update( m_angEyeAngles[YAW], m_angEyeAngles[PITCH] );
+
+	if ( m_flTauntAttackTime > 0.0f && m_flTauntAttackTime < gpGlobals->curtime )
+	{
+		m_flTauntAttackTime = 0.0f;
+		DoTauntAttack();
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -5417,6 +5423,14 @@ void CTFPlayer::Taunt( void )
 	if ( GetGroundEntity() == NULL )
 		return;
 
+	// Can't taunt while cloaked.
+	if ( m_Shared.IsStealthed() || m_Shared.InCond( TF_COND_STEALTHED_BLINK ) )
+		return;
+
+	// Can't taunt while disguised.
+	if ( m_Shared.InCond( TF_COND_DISGUISED ) || m_Shared.InCond( TF_COND_DISGUISING ) )
+		return;
+
 	// Allow voice commands, etc to be interrupted.
 	CMultiplayer_Expresser *pExpresser = GetMultiplayerExpresser();
 	Assert( pExpresser );
@@ -5429,6 +5443,18 @@ void CTFPlayer::Taunt( void )
 		// Get the duration of the scene.
 		float flDuration = GetSceneDuration( szResponse ) + 0.2f;
 
+		// Clear disguising state.
+		if ( m_Shared.InCond( TF_COND_DISGUISING ) )
+		{
+			m_Shared.RemoveCond( TF_COND_DISGUISING );
+		}
+
+		// Clear cloak state.
+		if ( m_Shared.InCond( TF_COND_STEALTHED ) )
+		{
+			m_Shared.RemoveCond( TF_COND_STEALTHED );
+		}
+
 		// Set player state as taunting.
 		m_Shared.AddCond( TF_COND_TAUNTING );
 		m_Shared.m_flTauntRemoveTime = gpGlobals->curtime + flDuration;
@@ -5437,9 +5463,164 @@ void CTFPlayer::Taunt( void )
 
 		// Slam velocity to zero.
 		SetAbsVelocity( vec3_origin );
+		
+		// Setup a taunt attack if necessary.
+		if ( V_stricmp( szResponse, "scenes/player/pyro/low/taunt02.vcd" ) == 0 )
+		{
+			m_flTauntAttackTime = gpGlobals->curtime + 2.1f;
+			m_iTauntAttack = TAUNTATK_PYRO_HADOUKEN;
+		}
+		else if ( V_stricmp( szResponse, "scenes/player/heavy/low/taunt03_v1.vcd" ) == 0 )
+		{
+			m_flTauntAttackTime = gpGlobals->curtime + 1.8f;
+			m_iTauntAttack = TAUNTATK_HEAVY_HIGH_NOON;
+		}
+		else if ( V_strnicmp( szResponse, "scenes/player/spy/low/taunt03", 29 ) == 0 )
+		{
+			m_flTauntAttackTime = gpGlobals->curtime + 1.8f;
+			m_iTauntAttack = TAUNTATK_SPY_FENCING_SLASH_A;
+		}
 	}
 
 	pExpresser->DisallowMultipleScenes();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFPlayer::DoTauntAttack( void )
+{
+	int iTauntType = m_iTauntAttack;
+
+	if ( !iTauntType )
+		return;
+
+	m_iTauntAttack = TAUNTATK_NONE;
+
+	switch ( iTauntType )
+	{
+		case TAUNTATK_PYRO_HADOUKEN:
+		case TAUNTATK_SPY_FENCING_SLASH_A:
+		case TAUNTATK_SPY_FENCING_SLASH_B:
+		case TAUNTATK_SPY_FENCING_STAB:
+		{
+			Vector vecAttackDir = BodyDirection2D();
+			Vector vecOrigin = WorldSpaceCenter() + vecAttackDir * 64;
+			Vector mins = vecOrigin - Vector( 24, 24, 24 );
+			Vector maxs = vecOrigin + Vector( 24, 24, 24 );
+
+			QAngle angForce( -45.0f, EyeAngles()[YAW], 0 );
+			Vector vecForce;
+			AngleVectors( angForce, &vecForce );
+			float flDamage = 0.0f;
+			int nDamageType = DMG_GENERIC;
+			int iDamageCustom = 0;
+
+			switch ( iTauntType )
+			{
+				case TAUNTATK_PYRO_HADOUKEN:
+					vecForce *= 25000.0f;
+					flDamage = 500.0f;
+					nDamageType = DMG_IGNITE;
+					iDamageCustom = TF_DMG_CUSTOM_TAUNTATK_HADOUKEN;
+					break;
+				case TAUNTATK_SPY_FENCING_STAB:
+					vecForce *= 20000.0f;
+					flDamage = 500.0f;
+					nDamageType = DMG_SLASH;
+					iDamageCustom = TF_DMG_CUSTOM_TAUNTATK_FENCING;
+					break;
+				default:
+					vecForce *= 100.0f;
+					flDamage = 25.0f;
+					nDamageType = DMG_SLASH | DMG_PREVENT_PHYSICS_FORCE;
+					iDamageCustom = TF_DMG_CUSTOM_TAUNTATK_FENCING;
+					break;
+			}
+
+			// Spy taunt has 3 hits, set up the next one.
+			if ( iTauntType == TAUNTATK_SPY_FENCING_SLASH_A )
+			{
+				m_flTauntAttackTime = gpGlobals->curtime + 0.47;
+				m_iTauntAttack = TAUNTATK_SPY_FENCING_SLASH_B;
+			}
+			else if ( iTauntType == TAUNTATK_SPY_FENCING_SLASH_B )
+			{
+				m_flTauntAttackTime = gpGlobals->curtime + 1.73;
+				m_iTauntAttack = TAUNTATK_SPY_FENCING_STAB;
+			}
+
+			CBaseEntity *pList[64];
+
+			int count = UTIL_EntitiesInBox( pList, 64, mins, maxs, FL_CLIENT|FL_OBJECT );
+
+			if ( tf_debug_damage.GetBool() )
+			{
+				NDebugOverlay::Box( vecOrigin, -Vector( 24, 24, 24 ), Vector( 24, 24, 24 ), 0, 255, 0, 40, 10.0f );
+			}
+
+			for ( int i = 0; i < count; i++ )
+			{
+				CBaseEntity *pEntity = pList[i];
+
+				if ( pEntity == this || !pEntity->IsAlive() || InSameTeam( pEntity ) || !FVisible( pEntity, MASK_SOLID ) )
+					continue;
+
+				Vector vecDamagePos = WorldSpaceCenter();
+				vecDamagePos += ( pEntity->WorldSpaceCenter() - vecDamagePos ) * 0.75f;
+
+				CTakeDamageInfo info( this, this, GetActiveTFWeapon(), vecForce, vecDamagePos, flDamage, nDamageType, iDamageCustom );
+				pEntity->TakeDamage( info );
+			}
+
+			break;
+		}
+		case TAUNTATK_HEAVY_HIGH_NOON:
+		{
+			// Fire a bullet in the direction player was looking at.
+			Vector vecSrc, vecShotDir, vecEnd;
+			QAngle angShot = EyeAngles();
+			AngleVectors( angShot, &vecShotDir );
+			vecSrc = Weapon_ShootPosition();
+			vecEnd = vecSrc + vecShotDir * 500;
+
+			trace_t tr;
+			UTIL_TraceLine( vecSrc, vecEnd, MASK_SOLID|CONTENTS_HITBOX, this, COLLISION_GROUP_PLAYER, &tr );
+
+			if ( tf_debug_damage.GetBool() )
+			{
+				NDebugOverlay::Line( vecSrc, tr.endpos, 0, 255, 0, true, 10.0f );
+			}
+
+			if ( tr.fraction < 1.0f )
+			{
+				CBaseEntity *pEntity = tr.m_pEnt;
+				if ( pEntity && pEntity->IsPlayer() && !InSameTeam( pEntity ) )
+				{
+					Vector vecForce, vecDamagePos;
+					QAngle angForce( -45.0, angShot[YAW], 0.0 );
+					AngleVectors( angForce, &vecForce );
+					vecForce *= 25000.0f;
+
+					vecDamagePos = tr.endpos;
+
+					CTakeDamageInfo info( this, this, GetActiveTFWeapon(), vecForce, vecDamagePos, 500, DMG_BULLET, TF_DMG_CUSTOM_TAUNTATK_HIGH_NOON );
+					pEntity->TakeDamage( info );
+				}
+			}
+
+			break;
+		}
+	}
+}	
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFPlayer::ClearTauntAttack( void )
+{
+	m_flTauntAttackTime = 0.0f;
+	m_iTauntAttack = TAUNTATK_NONE;
 }
 
 //-----------------------------------------------------------------------------

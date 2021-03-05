@@ -257,6 +257,16 @@ float CTFPlayerShared::GetConditionDuration( int nCond )
 	return 0.0f;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CTFPlayerShared::IsStealthed( void )
+{
+	if ( InCond( TF_COND_STEALTHED ) )
+		 return true;
+	return false;
+}
+
 void CTFPlayerShared::DebugPrintConditions( void )
 {
 #ifndef CLIENT_DLL
@@ -427,14 +437,7 @@ void CTFPlayerShared::OnConditionAdded( int nCond )
 		break;
 
 	case TF_COND_TAUNTING:
-		{
-			CTFWeaponBase *pWpn = m_pOuter->GetActiveTFWeapon();
-			if ( pWpn )
-			{
-				// cancel any reload in progress.
-				pWpn->AbortReload();
-			}
-		}
+		OnAddTaunting();
 		break;
 
 	default:
@@ -672,9 +675,9 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		{
 			m_pOuter->ResetTauntHandle();
 
-			m_pOuter->SnapEyeAngles( m_pOuter->m_angTauntCamera );
-			m_pOuter->SetAbsAngles( m_pOuter->m_angTauntCamera );
-			m_pOuter->SetLocalAngles( m_pOuter->m_angTauntCamera );
+			//m_pOuter->SnapEyeAngles( m_pOuter->m_angTauntCamera );
+			//m_pOuter->SetAbsAngles( m_pOuter->m_angTauntCamera );
+			//m_pOuter->SetLocalAngles( m_pOuter->m_angTauntCamera );
 
 			RemoveCond( TF_COND_TAUNTING );
 		}
@@ -913,6 +916,29 @@ void CTFPlayerShared::OnRemoveTeleported( void )
 {
 #ifdef CLIENT_DLL
 	m_pOuter->OnRemoveTeleported();
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFPlayerShared::OnAddTaunting( void )
+{
+	CTFWeaponBase *pWpn = m_pOuter->GetActiveTFWeapon();
+	if ( pWpn )
+	{
+		// cancel any reload in progress.
+		pWpn->AbortReload();
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFPlayerShared::OnRemoveTaunting( void )
+{
+#ifdef GAME_DLL
+	m_pOuter->ClearTauntAttack();
 #endif
 }
 
@@ -1289,6 +1315,12 @@ void CTFPlayerShared::Disguise( int nTeam, int nClass )
 
 	// we're not a spy
 	if ( nRealClass != TF_CLASS_SPY )
+	{
+		return;
+	}
+
+	// Can't disguise while taunting.
+	if ( InCond( TF_COND_TAUNTING ) )
 	{
 		return;
 	}

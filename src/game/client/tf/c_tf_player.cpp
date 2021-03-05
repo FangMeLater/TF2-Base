@@ -1706,8 +1706,8 @@ void C_TFPlayer::TurnOnTauntCam( void )
 		return;
 
 	// Save the old view angles.
-	engine->GetViewAngles( m_angTauntEngViewAngles );
-	prediction->GetViewAngles( m_angTauntPredViewAngles );
+	/*engine->GetViewAngles( m_angTauntEngViewAngles );
+	prediction->GetViewAngles( m_angTauntPredViewAngles );*/
 
 	m_TauntCameraData.m_flPitch = tf_tauntcam_pitch.GetFloat();
 	m_TauntCameraData.m_flYaw =  tf_tauntcam_yaw.GetFloat();
@@ -1739,10 +1739,10 @@ void C_TFPlayer::TurnOffTauntCam( void )
 	if ( !IsLocalPlayer() )
 		return;	
 
-	Vector vecOffset = g_ThirdPersonManager.GetCameraOffsetAngles();
+	/*Vector vecOffset = g_ThirdPersonManager.GetCameraOffsetAngles();
 
 	tf_tauntcam_pitch.SetValue( vecOffset[PITCH] - m_angTauntPredViewAngles[PITCH] );
-	tf_tauntcam_yaw.SetValue( vecOffset[YAW] - m_angTauntPredViewAngles[YAW] );
+	tf_tauntcam_yaw.SetValue( vecOffset[YAW] - m_angTauntPredViewAngles[YAW] );*/
 
 	g_ThirdPersonManager.SetDesiredCameraOffset( vec3_origin );
 	g_ThirdPersonManager.SetOverridingThirdPerson( false );
@@ -1751,8 +1751,8 @@ void C_TFPlayer::TurnOffTauntCam( void )
 	::input->CAM_SetCameraThirdData( NULL, vec3_angle );
 
 	// Reset the old view angles.
-	engine->SetViewAngles( m_angTauntEngViewAngles );
-	prediction->SetViewAngles( m_angTauntPredViewAngles );
+	/*engine->SetViewAngles( m_angTauntEngViewAngles );
+	prediction->SetViewAngles( m_angTauntPredViewAngles );*/
 
 	// Force the feet to line up with the view direction post taunt.
 	m_PlayerAnimState->m_bForceAimYaw = true;
