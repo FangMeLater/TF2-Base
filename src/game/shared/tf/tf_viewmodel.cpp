@@ -346,7 +346,14 @@ void CViewModelInvisProxy::OnBind( C_BaseEntity *pEnt )
 		0.0 :
 		RemapVal( flPercentInvisible, 0.0, 1.0, tf_vm_min_invis.GetFloat(), tf_vm_max_invis.GetFloat() );
 
-	m_pPercentInvisible->SetFloatValue( flWeaponInvis );
+	if ( pPlayer->m_Shared.InCond( TF_COND_STEALTHED_BLINK ) )
+	{
+		m_pPercentInvisible->SetFloatValue( 0.3f );
+	}
+	else
+	{
+		m_pPercentInvisible->SetFloatValue( flWeaponInvis );
+	}
 }
 
 IMaterial *CViewModelInvisProxy::GetMaterial()
