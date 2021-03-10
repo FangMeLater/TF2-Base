@@ -36,7 +36,10 @@ ConVar  tf_solidobjects( "tf_solidobjects", "1", FCVAR_REPLICATED | FCVAR_CHEAT 
 ConVar	tf_clamp_back_speed( "tf_clamp_back_speed", "0.9", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY );
 ConVar  tf_clamp_back_speed_min( "tf_clamp_back_speed_min", "100", FCVAR_REPLICATED | FCVAR_DEVELOPMENTONLY );
 
-#define TF_MAX_SPEED   400
+ConVar  sv_autobunnyhopping( "sv_autobunnyhopping", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Players automatically re-jump while holding jump button" );
+ConVar  sv_enablebunnyhopping( "sv_enablebunnyhopping", "0", FCVAR_REPLICATED | FCVAR_NOTIFY, "Allow player speed to exceed maximum running speed " );
+
+#define TF_MAX_SPEED   520
 
 #define TF_WATERJUMP_FORWARD  30
 #define TF_WATERJUMP_UP       300
@@ -371,8 +374,15 @@ bool CTFGameMovement::CheckJumpButton()
 		return false;
 
 	// Cannot jump again until the jump button has been released.
+	// Unless autojump is enabled
 	if ( mv->m_nOldButtons & IN_JUMP )
-		return false;
+	{
+		if ( !bOnGround )
+			return false;
+
+		if ( !sv_autobunnyhopping.GetBool() )
+			return false;
+	}
 
 	// In air, so ignore jumps (unless you are a scout).
 	if ( !bOnGround )
@@ -395,7 +405,10 @@ bool CTFGameMovement::CheckJumpButton()
 		return true;
 	}
 
-	PreventBunnyJumping();
+	if ( !sv_enablebunnyhopping.GetBool() )
+	{
+		PreventBunnyJumping();
+	}
 
 	// Start jump animation and player sound (specific TF animation and flags).
 	m_pTFPlayer->DoAnimationEvent( PLAYERANIMEVENT_JUMP );
