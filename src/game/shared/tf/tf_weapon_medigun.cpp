@@ -940,19 +940,6 @@ void CWeaponMedigun::StopHealSound( bool bStopHealingSound, bool bStopNoTargetSo
 //-----------------------------------------------------------------------------
 void CWeaponMedigun::ManageChargeEffect( void )
 {
-	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-	C_BaseEntity *pEffectOwner = this;
-
-	if ( pLocalPlayer == NULL )
-		return;
-
-	if ( pLocalPlayer == GetTFPlayerOwner() )
-	{
-		pEffectOwner = pLocalPlayer->GetViewModel();
-		if ( !pEffectOwner )
-			return;
-	}
-
 	bool bOwnerTaunting = false;
 
 	if ( GetTFPlayerOwner() && GetTFPlayerOwner()->m_Shared.InCond( TF_COND_TAUNTING ) == true )
@@ -962,7 +949,9 @@ void CWeaponMedigun::ManageChargeEffect( void )
 
 	if ( GetTFPlayerOwner() && bOwnerTaunting == false && m_bHolstered == false && ( m_flChargeLevel >= 1.0f || m_bChargeRelease == true ) )
 	{
-		if ( m_pChargeEffect == NULL )
+		C_BaseEntity *pEffectOwner = GetWeaponForEffect();
+
+		if ( pEffectOwner && m_pChargeEffect == NULL )
 		{
 			char *pszEffectName = NULL;
 
@@ -980,6 +969,7 @@ void CWeaponMedigun::ManageChargeEffect( void )
 			}
 
 			m_pChargeEffect = pEffectOwner->ParticleProp()->Create( pszEffectName, PATTACH_POINT_FOLLOW, "muzzle" );
+			m_hChargeEffectHost = pEffectOwner;
 		}
 
 		if ( m_pChargedSound == NULL )
@@ -994,9 +984,16 @@ void CWeaponMedigun::ManageChargeEffect( void )
 	}
 	else
 	{
+		C_BaseEntity *pEffectOwner = m_hChargeEffectHost.Get();
+
 		if ( m_pChargeEffect != NULL )
 		{
-			pEffectOwner->ParticleProp()->StopEmission( m_pChargeEffect );
+			if ( pEffectOwner )
+			{
+				pEffectOwner->ParticleProp()->StopEmission( m_pChargeEffect );
+				m_hChargeEffectHost = NULL;
+			}
+
 			m_pChargeEffect = NULL;
 		}
 
@@ -1111,26 +1108,19 @@ void CWeaponMedigun::UpdateEffects( void )
 	if ( !pFiringPlayer )
 		return;
 
-	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-	C_BaseEntity *pEffectOwner = this;
-	if ( pLocalPlayer == pFiringPlayer )
-	{
-		pEffectOwner = pLocalPlayer->GetViewModel();
-		if ( !pEffectOwner )
-			return;
-	}
+	C_BaseEntity *pEffectOwner = m_hHealingTargetEffect.hOwner.Get();
 
 	// Remove all the effects
-	if ( pEffectOwner )
+	if ( m_hHealingTargetEffect.pEffect && pEffectOwner )
 	{
 		pEffectOwner->ParticleProp()->StopEmission( m_hHealingTargetEffect.pEffect );
 	}
-	else
-	{
-		m_hHealingTargetEffect.pEffect->StopEmission();
-	}
+
+	m_hHealingTargetEffect.hOwner = NULL;
 	m_hHealingTargetEffect.pTarget = NULL;
 	m_hHealingTargetEffect.pEffect = NULL;
+
+	pEffectOwner = GetWeaponForEffect();
 
 	// Don't add targets if the medic is dead
 	if ( !pEffectOwner || pFiringPlayer->IsPlayerDead() || !pFiringPlayer->IsPlayerClass( TF_CLASS_MEDIC ) )
@@ -1170,6 +1160,7 @@ void CWeaponMedigun::UpdateEffects( void )
 		CNewParticleEffect *pEffect = pEffectOwner->ParticleProp()->Create( pszEffectName, PATTACH_POINT_FOLLOW, "muzzle" );
 		pEffectOwner->ParticleProp()->AddControlPoint( pEffect, 1, m_hHealingTarget, PATTACH_ABSORIGIN_FOLLOW, NULL, Vector(0,0,50) );
 
+		m_hHealingTargetEffect.hOwner = pEffectOwner;
 		m_hHealingTargetEffect.pTarget = m_hHealingTarget;
 		m_hHealingTargetEffect.pEffect = pEffect;
 	}

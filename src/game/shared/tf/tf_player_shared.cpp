@@ -15,6 +15,7 @@
 #include "tf_weapon_medigun.h"
 #include "tf_weapon_pipebomblauncher.h"
 #include "in_buttons.h"
+#include "tf_viewmodel.h"
 
 // Client specific.
 #ifdef CLIENT_DLL
@@ -24,6 +25,7 @@
 #include "soundenvelope.h"
 #include "c_tf_playerclass.h"
 #include "iviewrender.h"
+#include "prediction.h"
 
 #define CTFPlayerClass C_TFPlayerClass
 
@@ -1947,28 +1949,12 @@ void CTFPlayer::FireBullet( const FireBulletsInfo_t &info, bool bDoEffects, int 
 					iAttachment = pWeapon->LookupAttachment( "muzzle" );
 				}
 
-				C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-
 				bool bInToolRecordingMode = clienttools->IsInRecordingMode();
 
 				// try to align tracers to actual weapon barrel if possible
-				if ( IsLocalPlayer() && !bInToolRecordingMode )
+				if ( !ShouldDrawThisPlayer() && !bInToolRecordingMode )
 				{
-					C_BaseViewModel *pViewModel = GetViewModel(0);
-
-					if ( pViewModel )
-					{
-						iEntIndex = pViewModel->entindex();
-						pViewModel->GetAttachment( iAttachment, vecStart );
-					}
-				}
-				else if ( pLocalPlayer &&
-					pLocalPlayer->GetObserverTarget() == this &&
-					pLocalPlayer->GetObserverMode() == OBS_MODE_IN_EYE )
-				{	
-					// get our observer target's view model
-
-					C_BaseViewModel *pViewModel = pLocalPlayer->GetViewModel(0);
+					C_TFViewModel *pViewModel = dynamic_cast<C_TFViewModel *>( GetViewModel() );
 
 					if ( pViewModel )
 					{
@@ -2599,3 +2585,13 @@ CTFWeaponBase *CTFPlayer::Weapon_GetWeaponByType( int iType )
 
 }
 
+void CTFPlayer::PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force )
+{
+#ifdef CLIENT_DLL
+	// Don't make predicted footstep sounds in third person, animevents will take care of that.
+	if ( prediction->InPrediction() && C_BasePlayer::ShouldDrawLocalPlayer() )
+		return;
+#endif
+
+	BaseClass::PlayStepSound( vecOrigin, psurface, fvol, force );
+}

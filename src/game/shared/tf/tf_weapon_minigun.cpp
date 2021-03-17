@@ -644,6 +644,8 @@ void CTFMinigun::ItemPreFrame( void )
 //-----------------------------------------------------------------------------
 void CTFMinigun::StartBrassEffect()
 {
+	StopBrassEffect();
+
 	C_BaseEntity *pEffectOwner = GetWeaponForEffect();
 	if ( !pEffectOwner )
 		return;
@@ -666,6 +668,7 @@ void CTFMinigun::StartBrassEffect()
 	if ( m_iEjectBrassAttachment != -1 && m_pEjectBrassEffect == NULL )
 	{
 		m_pEjectBrassEffect = pEffectOwner->ParticleProp()->Create( "eject_minigunbrass", PATTACH_POINT_FOLLOW, m_iEjectBrassAttachment );
+		m_hBrassEffectHost = pEffectOwner;
 	}
 }
 
@@ -674,6 +677,8 @@ void CTFMinigun::StartBrassEffect()
 //-----------------------------------------------------------------------------
 void CTFMinigun::StartMuzzleEffect()
 {
+	StopMuzzleEffect();
+
 	C_BaseEntity *pEffectOwner = GetWeaponForEffect();
 	if ( !pEffectOwner )
 		return;
@@ -696,6 +701,7 @@ void CTFMinigun::StartMuzzleEffect()
 	if ( m_iMuzzleAttachment != -1 && m_pMuzzleEffect == NULL )
 	{
 		m_pMuzzleEffect = pEffectOwner->ParticleProp()->Create( "muzzle_minigun_constant", PATTACH_POINT_FOLLOW, m_iMuzzleAttachment );
+		m_hMuzzleEffectHost = pEffectOwner;
 	}
 }
 
@@ -704,14 +710,17 @@ void CTFMinigun::StartMuzzleEffect()
 //-----------------------------------------------------------------------------
 void CTFMinigun::StopBrassEffect()
 {
-	C_BaseEntity *pEffectOwner = GetWeaponForEffect();
-	if ( !pEffectOwner )
-		return;
+	C_BaseEntity *pEffectOwner = m_hBrassEffectHost.Get();
 
 	// Stop the brass ejection.
 	if ( m_pEjectBrassEffect )
 	{
-		pEffectOwner->ParticleProp()->StopEmission( m_pEjectBrassEffect );
+		if ( pEffectOwner )
+		{
+			pEffectOwner->ParticleProp()->StopEmission( m_pEjectBrassEffect );
+			m_hBrassEffectHost = NULL;
+		}
+
 		m_pEjectBrassEffect = NULL;
 	}
 }
@@ -721,14 +730,17 @@ void CTFMinigun::StopBrassEffect()
 //-----------------------------------------------------------------------------
 void CTFMinigun::StopMuzzleEffect()
 {
-	C_BaseEntity *pEffectOwner = GetWeaponForEffect();
-	if ( !pEffectOwner )
-		return;
+	C_BaseEntity *pEffectOwner = m_hMuzzleEffectHost.Get();
 
 	// Stop the muzzle flash.
 	if ( m_pMuzzleEffect )
 	{
-		pEffectOwner->ParticleProp()->StopEmission( m_pMuzzleEffect );
+		if ( pEffectOwner )
+		{
+			pEffectOwner->ParticleProp()->StopEmission( m_pMuzzleEffect );
+			m_hMuzzleEffectHost = NULL;
+		}
+
 		m_pMuzzleEffect = NULL;
 	}
 }

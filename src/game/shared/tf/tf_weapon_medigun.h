@@ -119,6 +119,7 @@ protected:
 	bool					m_bUpdateHealingTargets;
 	struct healingtargeteffects_t
 	{
+		EHANDLE				hOwner;
 		C_BaseEntity		*pTarget;
 		CNewParticleEffect	*pEffect;
 	};
@@ -128,6 +129,7 @@ protected:
 	bool					m_bOldChargeRelease;
 
 	CNewParticleEffect	*m_pChargeEffect;
+	EHANDLE				m_hChargeEffectHost;
 	CSoundPatch			*m_pChargedSound;
 #endif
 

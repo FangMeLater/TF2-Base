@@ -1681,10 +1681,9 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 	
 	m_flLastAction = gpGlobals->curtime;
 
-#ifdef _DEBUG
 	if ( FStrEq( pcmd, "addcond" ) )
 	{
-		if ( args.ArgC() >= 2 )
+		if ( sv_cheats->GetBool() && args.ArgC() >= 2 )
 		{
 			int iCond = clamp( atoi( args[1] ), 0, TF_COND_LAST-1 );
 
@@ -1720,13 +1719,14 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 	}
 	else if ( FStrEq( pcmd, "removecond" ) )
 	{
-		if ( args.ArgC() >= 2 )
+		if ( sv_cheats->GetBool() && args.ArgC() >= 2 )
 		{
 			int iCond = clamp( atoi( args[1] ), 0, TF_COND_LAST-1 );
 			m_Shared.RemoveCond( iCond );
 		}
 		return true;
 	}
+#ifdef _DEBUG
 	else if ( FStrEq( pcmd, "burn" ) ) 
 	{
 		m_Shared.Burn( this );

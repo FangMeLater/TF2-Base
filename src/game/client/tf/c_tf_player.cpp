@@ -3200,7 +3200,7 @@ void C_TFPlayer::ValidateModelIndex( void )
 void C_TFPlayer::Simulate( void )
 {
 	//Frame updates
-	if ( this == C_BasePlayer::GetLocalPlayer() )
+	if ( IsLocalPlayer() )
 	{
 		//Update the flashlight
 		Flashlight();

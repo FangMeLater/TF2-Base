@@ -903,7 +903,6 @@ void CTFWeaponBase::ItemBusyFrame( void )
 			{
 				AbortReload();
 
-	
 				pPlayer->m_flNextAttack = gpGlobals->curtime;
 				m_flNextPrimaryAttack = gpGlobals->curtime;
 
@@ -1449,8 +1448,7 @@ void CTFWeaponBase::ProcessMuzzleFlashEvent( void )
 	if ( pOwner == NULL )
 		return;
 
-	bool bDrawMuzzleFlashOnViewModel = ( pOwner->IsLocalPlayer() && !C_BasePlayer::ShouldDrawLocalPlayer() ) ||
-		( IsLocalPlayerSpectator() && GetSpectatorMode() == OBS_MODE_IN_EYE && GetSpectatorTarget() == pOwner->entindex() );
+	bool bDrawMuzzleFlashOnViewModel = !pOwner->ShouldDrawThisPlayer();
 
 	if ( bDrawMuzzleFlashOnViewModel )
 	{
@@ -1912,22 +1910,15 @@ CTFPlayer *CTFWeaponBase::GetTFPlayerOwner() const
 // -----------------------------------------------------------------------------
 C_BaseEntity *CTFWeaponBase::GetWeaponForEffect()
 {
-	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-	if ( !pLocalPlayer )
-		return NULL;
+	C_TFPlayer *pOwner = GetTFPlayerOwner();
 
-#if 0
-	// This causes many problems!
-	if ( pLocalPlayer->GetObserverMode() == OBS_MODE_IN_EYE )
+	if ( pOwner && !pOwner->ShouldDrawThisPlayer() )
 	{
-		C_BasePlayer *pObserverTarget = ToBasePlayer( pLocalPlayer->GetObserverTarget() );
-		if ( pObserverTarget )
-			return pObserverTarget->GetViewModel();
+		C_BaseViewModel *pViewModel = pOwner->GetViewModel();
+		
+		if ( pViewModel )
+			return pViewModel;
 	}
-#endif
-
-	if ( pLocalPlayer == GetTFPlayerOwner() )
-		return pLocalPlayer->GetViewModel();
 
 	return this;
 }
