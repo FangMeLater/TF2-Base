@@ -188,6 +188,9 @@ public:
 	void	SetJumping( bool bJumping );
 	bool    IsAirDashing( void ) { return m_bAirDash; }
 	void    SetAirDash( bool bAirDash );
+	int		GetAirDucks( void ) { return m_nAirDucked; }
+	void	IncrementAirDucks( void );
+	void	ResetAirDucks( void );
 
 	void	DebugPrintConditions( void );
 
@@ -297,6 +300,7 @@ private:
 
 	CNetworkVar( bool, m_bJumping );
 	CNetworkVar( bool, m_bAirDash );
+	CNetworkVar( int, m_nAirDucked );
 
 	CNetworkVar( float, m_flStealthNoAttackExpire );
 	CNetworkVar( float, m_flStealthNextChangeTime );

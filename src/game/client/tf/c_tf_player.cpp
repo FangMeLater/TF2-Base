@@ -1985,7 +1985,7 @@ extern ConVar cl_sidespeed;
 void C_TFPlayer::AvoidPlayers( CUserCmd *pCmd )
 {
 	// Turn off the avoid player code.
-	if ( !tf_avoidteammates.GetBool() )
+	if ( !tf_avoidteammates.GetBool() || !tf_avoidteammates_pushaway.GetBool() )
 		return;
 
 	// Don't test if the player doesn't exist or is dead.

@@ -86,7 +86,9 @@ ConVar tf_damage_range( "tf_damage_range", "0.5", FCVAR_DEVELOPMENTONLY );
 
 ConVar tf_max_voice_speak_delay( "tf_max_voice_speak_delay", "1.5", FCVAR_NOTIFY, "Max time after a voice command until player can do another one" );
 
-ConVar tf_allow_player_use( "tf_allow_player_use", "1", FCVAR_PROTECTED, "Allow players to execute + use while playing" );
+ConVar tf_allow_player_use( "tf_allow_player_use", "1", FCVAR_NOTIFY, "Allow players to execute + use while playing." );
+
+ConVar tf_allow_sliding_taunt( "tf_allow_sliding_taunt", "1", 0, "Allow player to slide for a bit after taunting." );
 
 extern ConVar spec_freeze_time;
 extern ConVar spec_freeze_traveltime;
@@ -2502,6 +2504,8 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 
 			// Set blast jumping state. It will be cleared once we land.
 			SetBlastJumpState( iJumpType, false );
+			
+			m_Shared.ResetAirDucks();
 		}
 	}
 
@@ -5605,7 +5609,10 @@ void CTFPlayer::Taunt( void )
 		m_angTauntCamera = EyeAngles();
 
 		// Slam velocity to zero.
-		SetAbsVelocity( vec3_origin );
+		if ( !tf_allow_sliding_taunt.GetBool() )
+		{
+			SetAbsVelocity( vec3_origin );
+		}
 		
 		// Setup a taunt attack if necessary.
 		if ( V_stricmp( szResponse, "scenes/player/pyro/low/taunt02.vcd" ) == 0 )
