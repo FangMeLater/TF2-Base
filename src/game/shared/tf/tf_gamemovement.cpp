@@ -216,6 +216,10 @@ void CTFGameMovement::ProcessMovement( CBasePlayer *pBasePlayer, CMoveData *pMov
 	// Run the command.
 	PlayerMove();
 	FinishMove();
+
+#ifdef GAME_DLL
+	m_pTFPlayer->m_bBlastLaunched = false;
+#endif
 }
 
 
@@ -1006,6 +1010,10 @@ void CTFGameMovement::CategorizePosition( void )
 	if ( mv->m_vecVelocity.z > 250.0f )
 	{
 		SetGroundEntity( NULL );
+#ifdef GAME_DLL
+		if ( m_pTFPlayer->m_bBlastLaunched )
+			m_pTFPlayer->SetBlastJumpState( TF_JUMP_OTHER, false );
+#endif
 		return;
 	}
 
@@ -1527,10 +1535,24 @@ bool CTFGameMovement::GameHasLadders() const
 void CTFGameMovement::SetGroundEntity( trace_t *pm )
 {
 	BaseClass::SetGroundEntity( pm );
-	if ( pm && pm->m_pEnt )
+
+	CBaseEntity *pNewGround = pm ? pm->m_pEnt : NULL;
+
+	if ( pNewGround )
 	{
 		m_pTFPlayer->m_Shared.SetAirDash( false );
 	}
+
+#ifdef GAME_DLL
+	// Clear blast jumping state if we landed on the ground or in the water.
+	if ( pNewGround != NULL || m_pTFPlayer->GetWaterLevel() > WL_NotInWater )
+	{
+		if ( m_pTFPlayer->GetBlastJumpFlags() != 0 )
+		{
+			m_pTFPlayer->ClearBlastJumpState();
+		}
+	}
+#endif
 }
 
 //-----------------------------------------------------------------------------

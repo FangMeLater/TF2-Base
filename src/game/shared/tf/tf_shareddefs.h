@@ -360,6 +360,7 @@ enum
 	TF_COND_INVULNERABLE_WEARINGOFF,
 	TF_COND_STEALTHED_BLINK,
 	TF_COND_SELECTED_TO_TELEPORT,
+	TF_COND_BLASTJUMPING,
 
 	// The following conditions all expire faster when the player is being healed
 	// If you add a new condition that shouldn't have this behavior, add it before this section.
@@ -613,6 +614,10 @@ enum
 	TF_DMG_CUSTOM_TAUNTATK_HIGH_NOON,
 	TF_DMG_CUSTOM_TAUNTATK_FENCING,
 };
+
+#define TF_JUMP_ROCKET	( 1 << 0 )
+#define TF_JUMP_STICKY	( 1 << 1 )
+#define TF_JUMP_OTHER	( 1 << 2 )
 
 enum
 {
