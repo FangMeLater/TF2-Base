@@ -29,18 +29,21 @@ void ClientPutInServer( edict_t *pEdict, const char *playername );
 void Bot_Think( CTFPlayer *pBot );
 
 ConVar bot_forcefireweapon( "bot_forcefireweapon", "", 0, "Force bots with the specified weapon to fire." );
+ConVar bot_forceattack( "bot_forceattack", "0", 0, "When on, all bots fire their guns." );
 ConVar bot_forceattack2( "bot_forceattack2", "0", 0, "When firing, use attack2." );
-ConVar bot_forceattackon( "bot_forceattackon", "1", 0, "When firing, don't tap fire, hold it down." );
+ConVar bot_forceattack_down( "bot_forceattack_down", "1", 0, "When firing, don't tap fire, hold it down." );
 ConVar bot_flipout( "bot_flipout", "0", 0, "When on, all bots fire their guns." );
 ConVar bot_defend( "bot_defend", "0", 0, "Set to a team number, and that team will all keep their combat shields raised." );
 ConVar bot_changeclass( "bot_changeclass", "0", 0, "Force all bots to change to the specified class." );
 ConVar bot_dontmove( "bot_dontmove", "0", FCVAR_CHEAT );
 ConVar bot_saveme( "bot_saveme", "0", FCVAR_CHEAT );
 static ConVar bot_mimic( "bot_mimic", "0", 0, "Bot uses usercmd of player by index." );
+static ConVar bot_mimic_inverse( "bot_mimic_inverse", "0", 0, "Bot uses usercmd of player by index." );
 static ConVar bot_mimic_yaw_offset( "bot_mimic_yaw_offset", "180", 0, "Offsets the bot yaw." );
 ConVar bot_selectweaponslot( "bot_selectweaponslot", "-1", FCVAR_CHEAT, "set to weapon slot that bot should switch to." );
 ConVar bot_randomnames( "bot_randomnames", "0", FCVAR_CHEAT );
 ConVar bot_jump( "bot_jump", "0", FCVAR_CHEAT, "Force all bots to repeatedly jump." );
+ConVar bot_crouch( "bot_crouch", "0", FCVAR_CHEAT, "Force all bots to crouch." );
 
 static int BotNumber = 1;
 static int g_iNextBotTeam = -1;
@@ -229,6 +232,13 @@ bool RunMimicCommand( CUserCmd& cmd )
 
 	cmd = *pPlayer->GetLastUserCommand();
 	cmd.viewangles[YAW] += bot_mimic_yaw_offset.GetFloat();
+
+	if ( bot_mimic_inverse.GetBool() )
+	{
+		cmd.forwardmove *= -1;
+		cmd.sidemove *= -1;
+	}
+
 	return true;
 }
 
@@ -352,108 +362,14 @@ void Bot_Think( CTFPlayer *pBot )
 			bot_saveme.SetValue( bot_saveme.GetInt() - 1 );
 		}
 
-		// Stop when shot
-		if ( !pBot->IsEFlagSet(EFL_BOT_FROZEN) )
+		if ( bot_jump.GetBool() && pBot->GetFlags() & FL_ONGROUND )
 		{
-			if ( pBot->m_iHealth == 100 )
-			{
-				forwardmove = 600 * ( botdata->backwards ? -1 : 1 );
-				if ( botdata->sidemove != 0.0f )
-				{
-					forwardmove *= random->RandomFloat( 0.1, 1.0f );
-				}
-			}
-			else
-			{
-				forwardmove = 0;
-			}
-
-			if ( bot_jump.GetBool() && pBot->GetFlags() & FL_ONGROUND )
-			{
-				buttons |= IN_JUMP;
-			}
+			buttons |= IN_JUMP;
 		}
 
-		// Only turn if I haven't been hurt
-		if ( !pBot->IsEFlagSet(EFL_BOT_FROZEN) && pBot->m_iHealth == 100 )
+		if ( bot_crouch.GetBool() )
 		{
-			Vector vecEnd;
-			Vector forward;
-
-			QAngle angle;
-			float angledelta = 15.0;
-
-			int maxtries = (int)360.0/angledelta;
-
-			if ( botdata->lastturntoright )
-			{
-				angledelta = -angledelta;
-			}
-
-			angle = pBot->GetLocalAngles();
-
-			Vector vecSrc;
-			while ( --maxtries >= 0 )
-			{
-				AngleVectors( angle, &forward );
-
-				vecSrc = pBot->GetLocalOrigin() + Vector( 0, 0, 36 );
-
-				vecEnd = vecSrc + forward * 10;
-
-				UTIL_TraceHull( vecSrc, vecEnd, VEC_HULL_MIN, VEC_HULL_MAX, 
-					MASK_PLAYERSOLID, pBot, COLLISION_GROUP_NONE, &trace );
-
-				if ( trace.fraction == 1.0 )
-				{
-					if ( gpGlobals->curtime < botdata->nextturntime )
-					{
-						break;
-					}
-				}
-
-				angle.y += angledelta;
-
-				if ( angle.y > 180 )
-					angle.y -= 360;
-				else if ( angle.y < -180 )
-					angle.y += 360;
-
-				botdata->nextturntime = gpGlobals->curtime + 2.0;
-				botdata->lastturntoright = random->RandomInt( 0, 1 ) == 0 ? true : false;
-
-				botdata->forwardAngle = angle;
-				botdata->lastAngles = angle;
-
-			}
-
-
-			if ( gpGlobals->curtime >= botdata->nextstrafetime )
-			{
-				botdata->nextstrafetime = gpGlobals->curtime + 1.0f;
-
-				if ( random->RandomInt( 0, 5 ) == 0 )
-				{
-					botdata->sidemove = -600.0f + 1200.0f * random->RandomFloat( 0, 2 );
-				}
-				else
-				{
-					botdata->sidemove = 0;
-				}
-				sidemove = botdata->sidemove;
-
-				if ( random->RandomInt( 0, 20 ) == 0 )
-				{
-					botdata->backwards = true;
-				}
-				else
-				{
-					botdata->backwards = false;
-				}
-			}
-
-			pBot->SetLocalAngles( angle );
-			vecViewAngles = angle;
+			buttons |= IN_DUCK;
 		}
 
 		if ( bot_selectweaponslot.GetInt() >= 0 )
@@ -504,7 +420,7 @@ void Bot_Think( CTFPlayer *pBot )
 				{
 					// Start firing
 					// Some weapons require releases, so randomise firing
-					if ( bot_forceattackon.GetBool() || (RandomFloat(0.0,1.0) > 0.5) )
+					if ( bot_forceattack_down.GetBool() || (RandomFloat(0.0,1.0) > 0.5) )
 					{
 						buttons |= IN_ATTACK;
 					}
@@ -517,9 +433,9 @@ void Bot_Think( CTFPlayer *pBot )
 			}
 		}
 
-		if ( bot_flipout.GetInt() )
+		if ( bot_flipout.GetInt() || bot_forceattack.GetBool() )
 		{
-			if ( bot_forceattackon.GetBool() || (RandomFloat(0.0,1.0) > 0.5) )
+			if ( bot_forceattack_down.GetBool() || (RandomFloat(0.0,1.0) > 0.5) )
 			{
 				buttons |= bot_forceattack2.GetBool() ? IN_ATTACK2 : IN_ATTACK;
 			}
