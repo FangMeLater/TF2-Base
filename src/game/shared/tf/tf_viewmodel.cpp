@@ -227,6 +227,19 @@ void CTFViewModel::ProcessMuzzleFlashEvent()
 	pWeapon->ProcessMuzzleFlashEvent();
 }
 
+//-----------------------------------------------------------------------------
+// Purpose
+//-----------------------------------------------------------------------------
+void CTFViewModel::FireEvent( const Vector& origin, const QAngle& angles, int event, const char *options )
+{
+	// Don't process animevents if it's not drawn.
+	CBasePlayer *pOwner = ToBasePlayer( GetOwner() );
+
+	if ( pOwner->ShouldDrawThisPlayer() )
+		return;
+
+	BaseClass::FireEvent( origin, angles, event, options );
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: Used for spy invisiblity material

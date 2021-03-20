@@ -51,6 +51,9 @@ public:
 	BobState_t	&GetBobState() { return m_BobState; }
 
 	virtual int DrawModel( int flags );
+
+	virtual void			FireEvent( const Vector& origin, const QAngle& angles, int event, const char *options );
+
 #endif
 
 private:

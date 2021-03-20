@@ -2475,22 +2475,25 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 	{
 	case TF_CLASS_SPY:
 		{
-			if ( m_Shared.m_flStealthNextChangeTime <= gpGlobals->curtime )
+			if ( !m_Shared.InCond( TF_COND_TAUNTING ) )
 			{
-				// Toggle invisibility
-				if ( m_Shared.InCond( TF_COND_STEALTHED ) )
+				if ( m_Shared.m_flStealthNextChangeTime <= gpGlobals->curtime )
 				{
-					m_Shared.FadeInvis( tf_spy_invis_unstealth_time.GetFloat() );
-					bDoSkill = true;
-				}
-				else if ( CanGoInvisible() && ( m_Shared.GetSpyCloakMeter() > 8.0f ) )	// must have over 10% cloak to start
-				{
-					m_Shared.AddCond( TF_COND_STEALTHED );
-					bDoSkill = true;
-				}
+					// Toggle invisibility
+					if ( m_Shared.InCond( TF_COND_STEALTHED ) )
+					{
+						m_Shared.FadeInvis( tf_spy_invis_unstealth_time.GetFloat() );
+						bDoSkill = true;
+					}
+					else if ( CanGoInvisible() && ( m_Shared.GetSpyCloakMeter() > 8.0f ) )	// must have over 10% cloak to start
+					{
+						m_Shared.AddCond( TF_COND_STEALTHED );
+						bDoSkill = true;
+					}
 
-				if ( bDoSkill )
-					m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5;
+					if ( bDoSkill )
+						m_Shared.m_flStealthNextChangeTime = gpGlobals->curtime + 0.5;
+				}
 			}
 		}
 		break;
