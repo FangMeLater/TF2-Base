@@ -410,6 +410,7 @@ bool CTFGameMovement::CheckJumpButton()
 	if ( bAirDash )
 	{
 		AirDash();
+		m_pTFPlayer->m_Shared.ResetAirDucks();
 		return true;
 	}
 
