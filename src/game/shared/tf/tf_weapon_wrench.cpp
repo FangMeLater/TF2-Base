@@ -66,25 +66,6 @@ void CTFWrench::OnFriendlyBuildingHit( CBaseObject *pObject, CTFPlayer *pPlayer 
 }
 #endif
 
-class CTraceFilterIgnorePlayers : public CTraceFilterSimple
-{
-public:
-	// It does have a base, but we'll never network anything below here..
-	DECLARE_CLASS( CTraceFilterIgnorePlayers, CTraceFilterSimple );
-
-	CTraceFilterIgnorePlayers( const IHandleEntity *passentity, int collisionGroup )
-		: CTraceFilterSimple( passentity, collisionGroup )
-	{
-	}
-
-	virtual bool ShouldHitEntity( IHandleEntity *pServerEntity, int contentsMask )
-	{
-		CBaseEntity *pEntity = EntityFromEntityHandle( pServerEntity );
-		return pEntity && !pEntity->IsPlayer();
-	}
-};
-
-
 void CTFWrench::Smack( void )
 {
 	// see if we can hit an object with a higher range
