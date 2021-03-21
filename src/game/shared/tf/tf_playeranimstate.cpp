@@ -405,6 +405,10 @@ void CTFPlayerAnimState::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 		}
 	case PLAYERANIMEVENT_DOUBLEJUMP:
 		{
+			CTFPlayer *pPlayer = GetTFPlayer();
+			if ( !pPlayer )
+				return;
+
 			// Check to see if we are jumping!
 			if ( !m_bJumping )
 			{
@@ -418,9 +422,9 @@ void CTFPlayerAnimState::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 			m_bInAirWalk = false;
 
 			// Player the air dash gesture.
-			if (GetBasePlayer()->GetFlags() & FL_DUCKING)
+			if ( pPlayer->m_Shared.IsLoser() )
 			{
-				RestartGesture( GESTURE_SLOT_JUMP, ACT_MP_DOUBLEJUMP_CROUCH );
+				RestartGesture( GESTURE_SLOT_JUMP, ACT_MP_DOUBLEJUMP_LOSERSTATE );
 			}
 			else
 			{
@@ -428,6 +432,8 @@ void CTFPlayerAnimState::DoAnimationEvent( PlayerAnimEvent_t event, int nData )
 			}
 			break;
 		}
+	case PLAYERANIMEVENT_DOUBLEJUMP_CROUCH:
+		break;
 	default:
 		{
 			BaseClass::DoAnimationEvent( event, nData );
