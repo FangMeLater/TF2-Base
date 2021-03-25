@@ -619,13 +619,40 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 				if ( m_aHealers[i].pPlayer.IsValid () )
 				{
 					CTFPlayer *pPlayer = static_cast<CTFPlayer *>( static_cast<CBaseEntity *>( m_aHealers[i].pPlayer ) );
+					float flAmount = 0.0f;
+
 					if ( IsAlly( pPlayer ) )
 					{
-						CTF_GameStats.Event_PlayerHealedOther( pPlayer, nHealthToAdd * ( m_aHealers[i].flAmount / fTotalHealAmount ) );
+						flAmount = (float)nHealthToAdd * ( m_aHealers[i].flAmount / fTotalHealAmount );
+						CTF_GameStats.Event_PlayerHealedOther( pPlayer, flAmount );
 					}
 					else
 					{
-						CTF_GameStats.Event_PlayerLeachedHealth( m_pOuter, m_aHealers[i].bDispenserHeal, nHealthToAdd * ( m_aHealers[i].flAmount / fTotalHealAmount ) );
+						flAmount = (float)nHealthToAdd * ( m_aHealers[i].flAmount / fTotalHealAmount );
+						CTF_GameStats.Event_PlayerLeachedHealth( m_pOuter, m_aHealers[i].bDispenserHeal, flAmount );
+					}
+					// Store off how much this guy healed.
+					m_aHealers[i].iRecentAmount += nHealthToAdd;
+
+					// Show how much this player healed every second.
+					if ( gpGlobals->curtime >= m_aHealers[i].flNextNofityTime )
+					{
+						if ( m_aHealers[i].iRecentAmount > 0 )
+						{
+							IGameEvent *event = gameeventmanager->CreateEvent( "player_healed" );
+							if ( event )
+							{
+								event->SetInt( "priority", 1 );
+								event->SetInt( "patient", m_pOuter->GetUserID() );
+								event->SetInt( "healer", pPlayer->GetUserID() );
+								event->SetInt( "amount", m_aHealers[i].iRecentAmount );
+
+								gameeventmanager->FireEvent( event );
+							}
+						}
+
+						m_aHealers[i].iRecentAmount = 0;
+						m_aHealers[i].flNextNofityTime = gpGlobals->curtime + 1.0f;
 					}
 				}
 			}
@@ -1513,6 +1540,8 @@ void CTFPlayerShared::Heal( CTFPlayer *pPlayer, float flAmount, bool bDispenserH
 	newHealer.pPlayer = pPlayer;
 	newHealer.flAmount = flAmount;
 	newHealer.bDispenserHeal = bDispenserHeal;
+	newHealer.iRecentAmount = 0;
+	newHealer.flNextNofityTime = gpGlobals->curtime + 1.0f;
 	m_aHealers.AddToTail( newHealer );
 
 	AddCond( TF_COND_HEALTH_BUFF, PERMANENT_CONDITION );
