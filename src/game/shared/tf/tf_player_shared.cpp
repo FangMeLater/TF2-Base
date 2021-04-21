@@ -1836,7 +1836,7 @@ void CTFPlayerShared::UpdateCritMult( void )
 
 	if ( m_DamageEvents.Count() == 0 )
 	{
-		m_iCritMult = RemapValClamped( flMinMult, 1.0, 4.0, 0, 255 );
+		m_iCritMult = RemapValClamped( flMinMult, flMinMult, flMaxMult, 0, 255 );
 		return;
 	}
 
@@ -1875,7 +1875,7 @@ void CTFPlayerShared::UpdateCritMult( void )
 
 	//Msg( "   TotalDamage: %.2f   -> Mult %.2f\n", flTotalDamage, flMult );
 
-	m_iCritMult = (int)RemapValClamped( flMult, 1.0, 4.0, 0, 255 );
+	m_iCritMult = (int)RemapValClamped( flMult, flMinMult, flMaxMult, 0, 255 );
 }
 
 //-----------------------------------------------------------------------------
