@@ -2453,6 +2453,20 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	if ( !IsAlive() )
 		return 0;
 
+	CBaseEntity *pAttacker = info.GetAttacker();
+	CBaseEntity *pInflictor = info.GetInflictor();
+	CTFWeaponBase *pWeapon = NULL;
+
+	if ( inputInfo.GetWeapon() )
+	{
+		pWeapon = dynamic_cast<CTFWeaponBase *>( inputInfo.GetWeapon() );
+	}
+	else if ( pAttacker && pAttacker->IsPlayer() )
+	{
+		// Assume that player used his currently active weapon.
+		pWeapon = ToTFPlayer( pAttacker )->GetActiveTFWeapon();
+	}
+
 	int iHealthBefore = GetHealth();
 
 	bool bDebug = tf_debug_damage.GetBool();
@@ -2462,7 +2476,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	}
 
 	// Make sure the player can take damage from the attacking entity
-	if ( !g_pGameRules->FPlayerCanTakeDamage( this, info.GetAttacker(), info ) )
+	if ( !g_pGameRules->FPlayerCanTakeDamage( this, pAttacker, info ) )
 	{
 		if ( bDebug )
 		{
@@ -2471,7 +2485,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		return 0;
 	}
 
-	AddDamagerToHistory( info.GetAttacker() );
+	AddDamagerToHistory( pAttacker );
 
 	// keep track of amount of damage last sustained
 	m_lastDamageAmount = info.GetDamage();
@@ -2485,7 +2499,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	// if this is our own rocket and we're in mid-air, scale down the damage
 	if ( IsPlayerClass( TF_CLASS_SOLDIER ) || IsPlayerClass( TF_CLASS_DEMOMAN ) ) 
 	{
-		if ( ( info.GetDamageType() & DMG_BLAST ) && info.GetAttacker() == this && GetGroundEntity() == NULL )
+		if ( ( info.GetDamageType() & DMG_BLAST ) && pAttacker == this && GetGroundEntity() == NULL )
 		{
 			float flDamage = info.GetDamage();
 			int iJumpType = 0;
@@ -2525,7 +2539,6 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 		bool bAllowDamage = false;
 
 		// check to see if our attacker is a trigger_hurt entity (and allow it to kill us even if we're invuln)
-		CBaseEntity *pAttacker = info.GetAttacker();
 		if ( pAttacker && pAttacker->IsSolidFlagSet( FSOLID_TRIGGER ) )
 		{
 			CTriggerHurt *pTrigger = dynamic_cast<CTriggerHurt *>( pAttacker );
@@ -2553,7 +2566,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	}
 
 	// If we're not damaging ourselves, apply randomness
-	if ( info.GetAttacker() != this && !(bitsDamage & (DMG_DROWN | DMG_FALL)) ) 
+	if ( pAttacker != this && !(bitsDamage & (DMG_DROWN | DMG_FALL)) ) 
 	{
 		float flDamage = 0;
 		if ( bitsDamage & DMG_CRITICAL )
@@ -2566,7 +2579,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			flDamage = info.GetDamage() * TF_DAMAGE_CRIT_MULTIPLIER;
 
 			// Show the attacker, unless the target is a disguised spy
-			if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() && !m_Shared.InCond( TF_COND_DISGUISED ) )
+			if ( pAttacker && pAttacker->IsPlayer() && !m_Shared.InCond( TF_COND_DISGUISED ) )
 			{
 				CEffectData	data;
 				data.m_nHitBox = GetParticleSystemIndex( "crit_text" );
@@ -2574,7 +2587,7 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 				data.m_vAngles = vec3_angle;
 				data.m_nEntIndex = 0;
 
-				CSingleUserRecipientFilter filter( (CBasePlayer*)info.GetAttacker() );
+				CSingleUserRecipientFilter filter( (CBasePlayer*)pAttacker );
 				te->DispatchEffect( filter, 0.0, data.m_vOrigin, "ParticleEffect", data );
 
 				EmitSound_t params;
@@ -2631,22 +2644,26 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 
 				if ( flRandomVal > 0.5 )
 				{
-					// Rocket launcher & Scattergun have different short range bonuses
-					if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() )
+					// Rocket launcher, Sticky launcher and Scattergun have different short range bonuses
+					if ( pWeapon )
 					{
-						CTFWeaponBase *pWeapon = ToTFPlayer( info.GetAttacker() )->GetActiveTFWeapon();
-						if ( pWeapon )
+						switch ( pWeapon->GetWeaponID() )
 						{
-							if ( pWeapon->GetWeaponID() == TF_WEAPON_ROCKETLAUNCHER )
+						case TF_WEAPON_ROCKETLAUNCHER:
+							// Rocket launcher and sticky launcher only have half the bonus of the other weapons at short range
+							flRandomDamage *= 0.5;
+							break;
+						case TF_WEAPON_PIPEBOMBLAUNCHER:
+						case TF_WEAPON_GRENADELAUNCHER:
+							if ( !( bitsDamage & DMG_NOCLOSEDISTANCEMOD ) )
 							{
-								// Rocket launcher only has half the bonus of the other weapons at short range
-								flRandomDamage *= 0.5;
+								flRandomDamage *= 0.2;
 							}
-							else if ( pWeapon->GetWeaponID() == TF_WEAPON_SCATTERGUN )
-							{
-								// Scattergun gets 50% bonus of other weapons at short range
-								flRandomDamage *= 1.5;
-							}
+							break;
+						case TF_WEAPON_SCATTERGUN:
+							// Scattergun gets 50% bonus of other weapons at short range
+							flRandomDamage *= 1.5;
+							break;
 						}
 					}
 				}
@@ -2715,9 +2732,9 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 	// add to the damage total for clients, which will be sent as a single
 	// message at the end of the frame
 	// todo: remove after combining shotgun blasts?
-	if ( info.GetInflictor() && info.GetInflictor()->edict() )
+	if ( info.GetInflictor() && pInflictor->edict() )
 	{
-		m_DmgOrigin = info.GetInflictor()->GetAbsOrigin();
+		m_DmgOrigin = pInflictor->GetAbsOrigin();
 	}
 
 	m_DmgTake += (int)info.GetDamage();
