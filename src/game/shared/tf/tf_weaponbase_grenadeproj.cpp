@@ -69,6 +69,9 @@ BEGIN_NETWORK_TABLE( CTFWeaponBaseGrenadeProj, DT_TFWeaponBaseGrenadeProj )
 #endif
 END_NETWORK_TABLE()
 
+#define TF_GRENADE_RADIUS					146.0f
+#define TF_GRENADE_RADIUS_OLD				159.0f
+
 //-----------------------------------------------------------------------------
 // Purpose: Constructor.
 //-----------------------------------------------------------------------------
@@ -303,7 +306,7 @@ void CTFWeaponBaseGrenadeProj::Explode( trace_t *pTrace, int bitsDamageType )
 	radiusInfo.info.Set( this, GetThrower(), GetBlastForce(), GetAbsOrigin(), m_flDamage, bitsDamageType, 0, &vecReported );
 	radiusInfo.m_vecSrc = vecOrigin;
 	radiusInfo.m_flRadius = flRadius;
-	radiusInfo.m_flSelfDamageRadius = 146.0f;
+	radiusInfo.m_flSelfDamageRadius = TF_GRENADE_RADIUS_OLD;
 
 	TFGameRules()->RadiusDamage( radiusInfo );
 
