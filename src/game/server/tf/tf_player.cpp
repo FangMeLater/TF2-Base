@@ -70,7 +70,7 @@ extern ConVar	tf_stalematechangeclasstime;
 EHANDLE g_pLastSpawnPoints[TF_TEAM_COUNT];
 
 ConVar tf_playerstatetransitions( "tf_playerstatetransitions", "-2", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY, "tf_playerstatetransitions <ent index or -1 for all>. Show player state transitions." );
-ConVar tf_playergib( "tf_playergib", "1", FCVAR_PROTECTED, "Allow player gibbing." );
+ConVar tf_playergib( "tf_playergib", "1", FCVAR_PROTECTED, "Allow player gibbing. 0: never, 1: normal, 2: always", true, 0, true, 2 );
 
 ConVar tf_weapon_ragdoll_velocity_min( "tf_weapon_ragdoll_velocity_min", "100", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 ConVar tf_weapon_ragdoll_velocity_max( "tf_weapon_ragdoll_velocity_max", "150", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
@@ -3167,11 +3167,24 @@ void CTFPlayer::ClearDamagerHistory()
 bool CTFPlayer::ShouldGib( const CTakeDamageInfo &info )
 {
 	// Check to see if we should allow players to gib.
-	if ( !tf_playergib.GetBool() )
+	int nGibCvar = tf_playergib.GetInt();
+	if ( nGibCvar == 0 )
 		return false;
 
-	if ( ( ( info.GetDamageType() & DMG_BLAST ) != 0 ) || ( ( info.GetDamageType() & DMG_HALF_FALLOFF ) != 0 ) )
+	if ( nGibCvar == 2 )
 		return true;
+
+	if ( info.GetDamageType() & DMG_NEVERGIB )
+		return false;
+
+	if ( info.GetDamageType() & DMG_ALWAYSGIB )
+		return true;
+
+	if ( ( info.GetDamageType() & DMG_BLAST ) || ( info.GetDamageType() & DMG_HALF_FALLOFF ) )
+	{
+		if ( ( info.GetDamageType() & DMG_CRITICAL ) || m_iHealth < -9 )
+			return true;
+	}
 
 	return false;
 }
