@@ -201,6 +201,8 @@ public:
 	bool	IsPlayerDominatingMe( int iPlayerIndex );
 	void	SetPlayerDominatingMe( CTFPlayer *pPlayer, bool bDominated );
 
+	int GetSequenceForDeath( CBaseAnimating *pAnim, int iDamageCustom );
+
 private:
 
 	void ImpactWaterTrace( trace_t &trace, const Vector &vecStart );

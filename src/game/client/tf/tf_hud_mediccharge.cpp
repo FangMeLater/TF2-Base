@@ -100,7 +100,7 @@ bool CHudMedicChargeMeter::ShouldDraw( void )
 	{
 		return CHudElement::ShouldDraw();
 	}
-	
+
 	return false;
 }
 

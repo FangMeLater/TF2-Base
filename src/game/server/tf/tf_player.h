@@ -261,7 +261,7 @@ public:
 
 	// Death & Ragdolls.
 	virtual void CreateRagdollEntity( void );
-	void CreateRagdollEntity( bool bGib, bool bBurning );
+	void CreateRagdollEntity( bool bGib, bool bBurning, bool bOnGround, int iDamageCustom );
 	void DestroyRagdoll( void );
 	CNetworkHandle( CBaseEntity, m_hRagdoll );	// networked entity handle 
 	virtual bool ShouldGib( const CTakeDamageInfo &info );
@@ -452,7 +452,6 @@ private:
 
 	bool				PlayGesture( const char *pGestureName );
 	bool				PlaySpecificSequence( const char *pSequenceName );
-	bool				PlayDeathAnimation( const CTakeDamageInfo &info, CTakeDamageInfo &info_modified );
 
 	bool				GetResponseSceneFromConcept( int iConcept, char *chSceneBuffer, int numSceneBufferBytes );
 

@@ -86,7 +86,7 @@ ConVar tf_damage_range( "tf_damage_range", "0.5", FCVAR_DEVELOPMENTONLY );
 
 ConVar tf_max_voice_speak_delay( "tf_max_voice_speak_delay", "1.5", FCVAR_NOTIFY, "Max time after a voice command until player can do another one" );
 
-ConVar tf_allow_player_use( "tf_allow_player_use", "1", FCVAR_NOTIFY, "Allow players to execute + use while playing." );
+ConVar tf_allow_player_use( "tf_allow_player_use", "0", FCVAR_NOTIFY, "Allow players to execute + use while playing." );
 
 ConVar tf_allow_sliding_taunt( "tf_allow_sliding_taunt", "1", 0, "Allow player to slide for a bit after taunting." );
 
@@ -160,8 +160,10 @@ public:
 		m_iPlayerIndex.Set( TF_PLAYER_INDEX_NONE );
 		m_bGib = false;
 		m_bBurning = false;
+		m_iDamageCustom = 0;
 		m_vecRagdollOrigin.Init();
 		m_vecRagdollVelocity.Init();
+		UseClientSideAnimation();
 	}
 
 	// Transmit ragdolls to everyone.
@@ -175,6 +177,8 @@ public:
 	CNetworkVector( m_vecRagdollOrigin );
 	CNetworkVar( bool, m_bGib );
 	CNetworkVar( bool, m_bBurning );
+	CNetworkVar( bool, m_bOnGround );
+	CNetworkVar( int, m_iDamageCustom );
 	CNetworkVar( int, m_iTeam );
 	CNetworkVar( int, m_iClass );
 };
@@ -189,6 +193,8 @@ IMPLEMENT_SERVERCLASS_ST_NOBASE( CTFRagdoll, DT_TFRagdoll )
 	SendPropInt( SENDINFO( m_nForceBone ) ),
 	SendPropBool( SENDINFO( m_bGib ) ),
 	SendPropBool( SENDINFO( m_bBurning ) ),
+	SendPropBool( SENDINFO( m_bOnGround ) ),
+	SendPropInt( SENDINFO( m_iDamageCustom ) ),
 	SendPropInt( SENDINFO( m_iTeam ), 3, SPROP_UNSIGNED ),
 	SendPropInt( SENDINFO( m_iClass ), 4, SPROP_UNSIGNED ),	
 END_SEND_TABLE()
@@ -3265,6 +3271,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
 	// we want the rag doll to burn if the player was burning and was not a pryo (who only burns momentarily)
 	bool bBurning = m_Shared.InCond( TF_COND_BURNING ) && ( TF_CLASS_PYRO != GetPlayerClass()->GetClassIndex() );
+	bool bOnGround = ( GetFlags() & FL_ONGROUND ) != 0;
 
 	// Remove all conditions...
 	m_Shared.RemoveAllCond( NULL );
@@ -3340,9 +3347,14 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	else
 	// See if we should play a custom death animation.
 	{
-		if ( PlayDeathAnimation( info, info_modified ) )
+		// If this was a rocket/grenade kill that didn't gib, exaggerated the blast force
+		if ( ( info.GetDamageType() & DMG_BLAST ) != 0 )
 		{
-			bRagdoll = false;
+			Vector vForceModifier = info.GetDamageForce();
+			vForceModifier.x *= 2.5;
+			vForceModifier.y *= 2.5;
+			vForceModifier.z *= 2;
+			info_modified.SetDamageForce( vForceModifier );
 		}
 	}
 
@@ -3406,7 +3418,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	// Create the ragdoll entity.
 	if ( bGib || bRagdoll )
 	{
-		CreateRagdollEntity( bGib, bBurning );
+		CreateRagdollEntity( bGib, bBurning, bOnGround, info.GetDamageCustom() );
 	}
 
 	// Don't overflow the value for this.
@@ -3426,59 +3438,6 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			}		
 		}
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-bool CTFPlayer::PlayDeathAnimation( const CTakeDamageInfo &info, CTakeDamageInfo &info_modified )
-{
-	// No supporting this for the initial release.
-	return false;
-
-	if ( SelectWeightedSequence( ACT_DIESIMPLE ) == -1 )
-		return false;
-
-	// Get the attacking player.
-	CTFPlayer *pAttacker = (CTFPlayer*)ToTFPlayer( info.GetAttacker() );
-	if ( !pAttacker )
-		return false;
-
-	bool bPlayDeathAnim = false;
-
-	// Check for a sniper headshot. (Currently only on Heavy.)
-	if ( pAttacker->GetPlayerClass()->IsClass( TF_CLASS_SNIPER ) && ( info.GetDamageCustom() == TF_DMG_CUSTOM_HEADSHOT ) )
-	{
-		if ( GetPlayerClass()->IsClass( TF_CLASS_HEAVYWEAPONS ) )
-		{
-			bPlayDeathAnim = true;
-		}
-	}
-	// Check for a spy backstab. (Currently only on Sniper.)
-	else if ( pAttacker->GetPlayerClass()->IsClass( TF_CLASS_SPY ) && ( info.GetDamageCustom() == TF_DMG_CUSTOM_BACKSTAB ) )
-	{
-		if ( GetPlayerClass()->IsClass( TF_CLASS_SNIPER ) )
-		{
-			bPlayDeathAnim = true;
-		}
-	}
-
-	// Play death animation?
-	if ( bPlayDeathAnim )
-	{
-		info_modified.SetDamageType( info_modified.GetDamageType() | DMG_REMOVENORAGDOLL | DMG_PREVENT_PHYSICS_FORCE );
-
-		SetAbsVelocity( vec3_origin );
-		DoAnimationEvent( PLAYERANIMEVENT_DIE );
-
-		// No ragdoll yet.
-		if ( m_hRagdoll.Get() )
-		{
-			UTIL_Remove( m_hRagdoll );
-		}
-	}
-
-	return bPlayDeathAnim;
 }
 
 //-----------------------------------------------------------------------------
@@ -4946,13 +4905,13 @@ void CTFPlayer::PlayerUse( void )
 //-----------------------------------------------------------------------------
 void CTFPlayer::CreateRagdollEntity( void )
 {
-	CreateRagdollEntity( false, false );
+	CreateRagdollEntity( false, false, false, 0 );
 }
 
 //-----------------------------------------------------------------------------
 // Purpose: Create a ragdoll entity to pass to the client.
 //-----------------------------------------------------------------------------
-void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning )
+void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning, bool bOnGround, int iDamageCustom )
 {
 	// If we already have a ragdoll destroy it.
 	CTFRagdoll *pRagdoll = dynamic_cast<CTFRagdoll*>( m_hRagdoll.Get() );
@@ -4969,12 +4928,14 @@ void CTFPlayer::CreateRagdollEntity( bool bGib, bool bBurning )
 	{
 		pRagdoll->m_vecRagdollOrigin = GetAbsOrigin();
 		pRagdoll->m_vecRagdollVelocity = GetAbsVelocity();
-		pRagdoll->m_vecForce = m_vecTotalBulletForce;
+		pRagdoll->m_vecForce = m_vecForce;
 		pRagdoll->m_nForceBone = m_nForceBone;
 		Assert( entindex() >= 1 && entindex() <= MAX_PLAYERS );
 		pRagdoll->m_iPlayerIndex.Set( entindex() );
 		pRagdoll->m_bGib = bGib;
 		pRagdoll->m_bBurning = bBurning;
+		pRagdoll->m_bOnGround = bOnGround;
+		pRagdoll->m_iDamageCustom = iDamageCustom;
 		pRagdoll->m_iTeam = GetTeamNumber();
 		pRagdoll->m_iClass = GetPlayerClass()->GetClassIndex();
 	}
