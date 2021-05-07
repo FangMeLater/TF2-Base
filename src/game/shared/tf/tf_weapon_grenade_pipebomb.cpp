@@ -347,8 +347,12 @@ void CTFGrenadePipebombProjectile::Spawn()
 //-----------------------------------------------------------------------------
 void CTFGrenadePipebombProjectile::Precache()
 {
-	PrecacheModel( TF_WEAPON_PIPEBOMB_MODEL );
-	PrecacheModel( TF_WEAPON_PIPEGRENADE_MODEL );
+	int iModel = PrecacheModel( TF_WEAPON_PIPEBOMB_MODEL );
+	PrecacheGibsForModel( iModel );
+
+	iModel = PrecacheModel( TF_WEAPON_PIPEGRENADE_MODEL );
+	PrecacheGibsForModel( iModel );
+
 	PrecacheParticleSystem( "stickybombtrail_blue" );
 	PrecacheParticleSystem( "stickybombtrail_red" );
 
@@ -385,14 +389,23 @@ void CTFGrenadePipebombProjectile::Detonate()
 {
 	if ( ShouldNotDetonate() )
 	{
-		RemoveGrenade();
+		RemoveGrenade( true );
 		return;
 	}
 
 	if ( m_bFizzle )
 	{
 		g_pEffects->Sparks( GetAbsOrigin() );
-		RemoveGrenade();
+
+		// CreatePipebombGibs
+		CPVSFilter filter( GetAbsOrigin() );
+		UserMessageBegin( filter, "CheapBreakModel" );
+			WRITE_SHORT( GetModelIndex() );
+			WRITE_VEC3COORD( GetAbsOrigin() );
+		MessageEnd();
+
+		RemoveGrenade( false );
+
 		return;
 	}
 
