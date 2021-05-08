@@ -107,7 +107,6 @@ void CTFPipebombLauncher::Spawn( void )
 bool CTFPipebombLauncher::Holster( CBaseCombatWeapon *pSwitchingTo )
 {
 	m_flChargeBeginTime = 0;
-	StopSound( "Weapon_StickyBombLauncher.ChargeUp" );
 
 	return BaseClass::Holster( pSwitchingTo );
 }
@@ -200,7 +199,6 @@ void CTFPipebombLauncher::LaunchGrenade( void )
 	CTFPlayer *pPlayer = ToTFPlayer( GetPlayerOwner() );
 	if ( !pPlayer )
 		return;
-	StopSound( "Weapon_StickyBombLauncher.ChargeUp" );
 
 	CalcIsAttackCritical();
 
