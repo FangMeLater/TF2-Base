@@ -3437,6 +3437,7 @@ bool C_TFPlayer::IsNemesisOfLocalPlayer()
 	return false;
 }
 
+extern ConVar tf_tournament_hide_domination_icons;
 //-----------------------------------------------------------------------------
 // Purpose: Returns whether we should show the nemesis icon for this player
 //-----------------------------------------------------------------------------
@@ -3448,7 +3449,8 @@ bool C_TFPlayer::ShouldShowNemesisIcon()
 	{
 		bool bStealthed = m_Shared.InCond( TF_COND_STEALTHED );
 		bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
-		if ( IsAlive() && !bStealthed && !bDisguised )
+		bool bTournamentHide = TFGameRules()->IsInTournamentMode() && tf_tournament_hide_domination_icons.GetBool();
+		if ( IsAlive() && !bStealthed && !bDisguised && !bTournamentHide )
 			return true;
 	}
 	return false;

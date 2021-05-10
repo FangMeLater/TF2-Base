@@ -458,7 +458,7 @@ bool CTFGameRules::CanChangelevelBecauseOfTimeLimit( void )
 	// we're playing mini-rounds, and the master says we need to play all of them before changing (for maps like Dustbowl)
 	if ( !m_bForceMapReset && pMaster && pMaster->PlayingMiniRounds() && pMaster->ShouldPlayAllControlPointRounds() )
 	{
-		if ( pMaster->FindControlPointRoundToPlay() )
+		if ( pMaster->NumPlayableControlPointRounds() )
 		{
 			return false;
 		}
@@ -2656,6 +2656,8 @@ void CTFGameRules::HandleScrambleTeams( void )
 			pTFPlayer->ForceChangeTeam( TF_TEAM_AUTOASSIGN );
 		}
 	}
+
+	ResetTeamsRoundWinTracking();
 }
 
 //-----------------------------------------------------------------------------
