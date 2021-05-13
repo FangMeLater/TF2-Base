@@ -106,6 +106,11 @@ public:
 
 	CTFGameRules();
 
+	enum
+	{
+		HALLOWEEN_SCENARIO_DOOMSDAY = 5,
+	};
+
 	// Damage Queries.
 	virtual bool	Damage_IsTimeBased( int iDmgType );			// Damage types that are time-based.
 	virtual bool	Damage_ShowOnHUD( int iDmgType );				// Damage types that have client HUD art.
@@ -123,6 +128,9 @@ public:
 	static int		CalcPlayerScore( RoundStats_t *pRoundStats );
 
 	bool			IsBirthday( void );
+
+	bool			IsMannVsMachineMode( void ) { return false; }
+	bool			IsHalloweenScenario( int iScenario ) { return false; }
 
 	virtual const unsigned char *GetEncryptionKey( void ) { return (unsigned char *)"E2NcUkG2"; }
 
@@ -220,6 +228,7 @@ public:
 
 	const char *GetTeamGoalString( int iTeam );
 
+	virtual bool	IsMultiplayer( void ) { return true; };
 	virtual bool	IsConnectedUserInfoChangeAllowed( CBasePlayer *pPlayer ) { return true; }
 
 #ifdef CLIENT_DLL
