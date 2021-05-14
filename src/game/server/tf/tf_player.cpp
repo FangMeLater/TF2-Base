@@ -160,6 +160,7 @@ public:
 		m_iPlayerIndex.Set( TF_PLAYER_INDEX_NONE );
 		m_bGib = false;
 		m_bBurning = false;
+		m_bOnGround = false;
 		m_iDamageCustom = 0;
 		m_vecRagdollOrigin.Init();
 		m_vecRagdollVelocity.Init();
@@ -346,7 +347,7 @@ bool HintCallbackNeedsResources_Dispenser( CBasePlayer *pPlayer )
 }
 bool HintCallbackNeedsResources_Teleporter( CBasePlayer *pPlayer )
 {
-	return ( pPlayer->GetAmmoCount( TF_AMMO_METAL ) > CalculateObjectCost( OBJ_TELEPORTER_ENTRANCE ) );
+	return ( pPlayer->GetAmmoCount( TF_AMMO_METAL ) > CalculateObjectCost( OBJ_TELEPORTER ) );
 }
 
 //-----------------------------------------------------------------------------
@@ -371,6 +372,8 @@ CTFPlayer::CTFPlayer()
 
 	m_flNextTimeCheck = gpGlobals->curtime;
 	m_flSpawnTime = 0;
+
+	m_flNextCarryTalkTime = 0.0f;
 
 	SetViewOffset( TF_PLAYER_VIEW_OFFSET );
 
@@ -432,6 +435,23 @@ void CTFPlayer::TFPlayerThink()
 			StopScriptedScene( this, m_hTauntScene );
 			m_Shared.m_flTauntRemoveTime = 0.0f;
 			m_hTauntScene = NULL;
+		}
+	}
+
+	// If players is hauling a building have him talk about it from time to time.
+	if ( m_flNextCarryTalkTime != 0.0f && m_flNextCarryTalkTime < gpGlobals->curtime )
+	{
+		CBaseObject *pObject = m_Shared.GetCarriedObject();
+		if ( pObject )
+		{
+			const char *pszModifier = pObject->GetResponseRulesModifier();
+			SpeakConceptIfAllowed( MP_CONCEPT_CARRYING_BUILDING, pszModifier );
+			m_flNextCarryTalkTime = gpGlobals->curtime + RandomFloat( 6.0f, 12.0f );
+		}
+		else
+		{
+			// No longer hauling, shut up.
+			m_flNextCarryTalkTime = 0.0f;
 		}
 	}
 
@@ -1928,24 +1948,66 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 	}
 	else if ( FStrEq( pcmd, "build" ) )
 	{
+		int iBuilding = 0;
+		int iMode = 0;
+
 		if ( args.ArgC() == 2 )
 		{
 			// player wants to build something
-			int iBuilding = atoi( args[ 1 ] );
+			iBuilding = atoi( args[ 1 ] );
+			iMode = 0;
 
-			StartBuildingObjectOfType( iBuilding );
+			if (iBuilding == 3)
+				iBuilding = iMode = 1;
+
+			StartBuildingObjectOfType( iBuilding, iMode );
 		}
+		else if ( args.ArgC() == 3 )
+		{
+			// player wants to build something
+			iBuilding = atoi( args[ 1 ] );
+			iMode = atoi( args[ 2 ] );
+
+			StartBuildingObjectOfType( iBuilding, iMode );
+		}
+		else
+		{
+			Warning( "Usage: build <building> <mode>\n" );
+			return true;
+		}
+
 		return true;
 	}
 	else if ( FStrEq( pcmd, "destroy" ) )
 	{
+		int iBuilding = 0;
+		int iMode = 0;
+
 		if ( args.ArgC() == 2 )
 		{
 			// player wants to destroy something
-			int iBuilding = atoi( args[ 1 ] );
+			iBuilding = atoi( args[ 1 ] );
+			iMode = 0;
 
-			DetonateOwnedObjectsOfType( iBuilding );
+			if ( iBuilding == 3 )
+				iBuilding = iMode = 1;
+
+			DetonateOwnedObjectsOfType( iBuilding, iMode );
 		}
+		else if ( args.ArgC() == 3 )
+		{
+			// player wants to destroy something
+			iBuilding = atoi( args[ 1 ] );
+			iMode = atoi( args[ 2 ] );
+
+			DetonateOwnedObjectsOfType( iBuilding, iMode );
+		}
+		else
+		{
+			Warning( "Usage: destroy <building> <mode>\n" );
+			return true;
+		}
+
 		return true;
 	}
 	else if ( FStrEq( pcmd, "extendfreeze" ) )
@@ -2110,7 +2172,7 @@ bool CTFPlayer::CanDisguise( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CTFPlayer::DetonateOwnedObjectsOfType( int iType )
+void CTFPlayer::DetonateOwnedObjectsOfType( int iType, int iMode )
 {
 	int i;
 	int iNumObjects = GetObjectCount();
@@ -2118,7 +2180,7 @@ void CTFPlayer::DetonateOwnedObjectsOfType( int iType )
 	{
 		CBaseObject *pObj = GetObject(i);
 
-		if ( pObj && pObj->GetType() == iType )
+		if ( pObj && pObj->GetType() == iType && pObj->GetObjectMode() == iMode )
 		{
 			SpeakConceptIfAllowed( MP_CONCEPT_DETONATED_OBJECT, pObj->GetResponseRulesModifier() );
 			pObj->DetonateObject();
@@ -2151,10 +2213,10 @@ void CTFPlayer::DetonateOwnedObjectsOfType( int iType )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CTFPlayer::StartBuildingObjectOfType( int iType )
+void CTFPlayer::StartBuildingObjectOfType( int iType, int iMode )
 {
 	// early out if we can't build this type of object
-	if ( CanBuild( iType ) != CB_CAN_BUILD )
+	if ( CanBuild( iType, iMode ) != CB_CAN_BUILD )
 		return;
 
 	for ( int i = 0; i < WeaponCount(); i++) 
@@ -2173,6 +2235,7 @@ void CTFPlayer::StartBuildingObjectOfType( int iType )
 		if ( pBuilder )
 		{
 			pBuilder->SetSubType( iType );
+			pBuilder->SetObjectMode( iMode );
 
 			if ( GetActiveTFWeapon() == pBuilder )
 			{
@@ -2553,6 +2616,12 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 			{
 				bAllowDamage = true;
 			}
+		}
+
+		// Ubercharge does not save from telefrags.
+		if ( info.GetDamageCustom() == TF_DMG_CUSTOM_TELEFRAG )
+		{
+			bAllowDamage = true;
 		}
 
 		if ( !bAllowDamage )
@@ -3263,11 +3332,9 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 
 	StateTransition( TF_STATE_DYING );	// Transition into the dying state.
 
-	CTFPlayer *pPlayerAttacker = NULL;
-	if ( info.GetAttacker() && info.GetAttacker()->IsPlayer() )
-	{
-		pPlayerAttacker = ToTFPlayer( info.GetAttacker() );
-	}
+	CBaseEntity *pAttacker = info.GetAttacker();
+	CBaseEntity *pInflictor = info.GetInflictor();
+	CTFPlayer *pTFAttacker = ToTFPlayer( pAttacker );
 
 	bool bDisguised = m_Shared.InCond( TF_COND_DISGUISED );
 	// we want the rag doll to burn if the player was burning and was not a pryo (who only burns momentarily)
@@ -3292,7 +3359,7 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	DropAmmoPack();
 
 	// If the player has a capture flag and was killed by another player, award that player a defense
-	if ( HasItem() && pPlayerAttacker && ( pPlayerAttacker != this ) )
+	if ( HasItem() && pTFAttacker && ( pTFAttacker != this ) )
 	{
 		CCaptureFlag *pCaptureFlag = dynamic_cast<CCaptureFlag *>( GetItem() );
 		if ( pCaptureFlag )
@@ -3300,13 +3367,23 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			IGameEvent *event = gameeventmanager->CreateEvent( "teamplay_flag_event" );
 			if ( event )
 			{
-				event->SetInt( "player", pPlayerAttacker->entindex() );
+				event->SetInt( "player", pTFAttacker->entindex() );
 				event->SetInt( "eventtype", TF_FLAGEVENT_DEFEND );
 				event->SetInt( "priority", 8 );
 				gameeventmanager->FireEvent( event );
 			}
-			CTF_GameStats.Event_PlayerDefendedPoint( pPlayerAttacker );
+			CTF_GameStats.Event_PlayerDefendedPoint( pTFAttacker );
 		}
+	}
+
+	if ( IsPlayerClass( TF_CLASS_ENGINEER ) && m_Shared.GetCarriedObject() )
+	{
+		// Blow it up at our position.
+		CBaseObject *pObject = m_Shared.GetCarriedObject();
+		pObject->Teleport( &WorldSpaceCenter(), &GetAbsAngles(), &vec3_origin );
+		pObject->DropCarriedObject( this );
+		CTakeDamageInfo newInfo( pInflictor, pAttacker, (float)pObject->GetHealth(), DMG_GENERIC, TF_DMG_CUSTOM_CARRIED_BUILDING );
+		pObject->Killed( newInfo );
 	}
 
 	// Remove all items...
@@ -3361,37 +3438,37 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 
 	// show killer in death cam mode
 	// chopped down version of SetObserverTarget without the team check
-	if( pPlayerAttacker )
+	if( pTFAttacker )
 	{
 		// See if we were killed by a sentrygun. If so, look at that instead of the player
-		if ( info.GetInflictor() && info.GetInflictor()->IsBaseObject() )
+		if ( pInflictor && pInflictor->IsBaseObject() )
 		{
 			// Catches the case where we're killed directly by the sentrygun (i.e. bullets)
 			// Look at the sentrygun
-			m_hObserverTarget.Set( info.GetInflictor() ); 
+			m_hObserverTarget.Set( pInflictor ); 
 		}
 		// See if we were killed by a projectile emitted from a base object. The attacker
 		// will still be the owner of that object, but we want the deathcam to point to the 
 		// object itself.
-		else if ( info.GetInflictor() && info.GetInflictor()->GetOwnerEntity() && 
-					info.GetInflictor()->GetOwnerEntity()->IsBaseObject() )
+		else if ( pInflictor && pInflictor->GetOwnerEntity() && 
+					pInflictor->GetOwnerEntity()->IsBaseObject() )
 		{
-			m_hObserverTarget.Set( info.GetInflictor()->GetOwnerEntity() );
+			m_hObserverTarget.Set( pInflictor->GetOwnerEntity() );
 		}
 		else
 		{
 			// Look at the player
-			m_hObserverTarget.Set( info.GetAttacker() ); 
+			m_hObserverTarget.Set( pAttacker ); 
 		}
 
 		// reset fov to default
 		SetFOV( this, 0 );
 	}
-	else if ( info.GetAttacker() && info.GetAttacker()->IsBaseObject() )
+	else if ( pAttacker && pAttacker->IsBaseObject() )
 	{
 		// Catches the case where we're killed by entities spawned by the sentrygun (i.e. rockets)
 		// Look at the sentrygun. 
-		m_hObserverTarget.Set( info.GetAttacker() ); 
+		m_hObserverTarget.Set( pAttacker ); 
 	}
 	else
 	{
@@ -3401,19 +3478,21 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 	if ( info_modified.GetDamageCustom() == TF_DMG_CUSTOM_SUICIDE )
 	{
 		// if this was suicide, recalculate attacker to see if we want to award the kill to a recent damager
-		info_modified.SetAttacker( TFGameRules()->GetDeathScorer( info.GetAttacker(), info.GetInflictor(), this ) );
+		info_modified.SetAttacker( TFGameRules()->GetDeathScorer( info.GetAttacker(), pInflictor, this ) );
 	}
 
 	BaseClass::Event_Killed( info_modified );
 
-	CTFPlayer *pInflictor = ToTFPlayer( info.GetInflictor() );
-	if ( ( TF_DMG_CUSTOM_HEADSHOT == info.GetDamageCustom() ) && pInflictor )
-	{				
-		CTF_GameStats.Event_Headshot( pInflictor );
-	}
-	else if ( ( TF_DMG_CUSTOM_BACKSTAB == info.GetDamageCustom() ) && pInflictor )
+	if ( pTFAttacker )
 	{
-		CTF_GameStats.Event_Backstab( pInflictor );
+		if ( TF_DMG_CUSTOM_HEADSHOT == info.GetDamageCustom() )
+		{
+			CTF_GameStats.Event_Headshot( pTFAttacker );
+		}
+		else if ( TF_DMG_CUSTOM_BACKSTAB == info.GetDamageCustom() )
+		{
+			CTF_GameStats.Event_Backstab( pTFAttacker );
+		}
 	}
 
 	// Create the ragdoll entity.
@@ -3517,12 +3596,17 @@ void CTFPlayer::AmmoPackCleanUp( void )
 //-----------------------------------------------------------------------------
 void CTFPlayer::DropAmmoPack( void )
 {
+	// Since weapon is hidden in loser state don't drop ammo pack.
+	if ( m_Shared.IsLoser() )
+		return;
+
 	// We want the ammo packs to look like the player's weapon model they were carrying.
 	// except if they are melee or building weapons
 	CTFWeaponBase *pWeapon = NULL;
 	CTFWeaponBase *pActiveWeapon = m_Shared.GetActiveTFWeapon();
 
-	if ( !pActiveWeapon || pActiveWeapon->GetTFWpnData().m_bDontDrop )
+	if ( !pActiveWeapon || pActiveWeapon->GetTFWpnData().m_bDontDrop ||
+		( pActiveWeapon->IsWeapon( TF_WEAPON_BUILDER ) && m_Shared.m_bCarryingObject ) )
 	{
 		// Don't drop this one, find another one to drop
 
@@ -4890,6 +4974,7 @@ void CTFPlayer::TeleportEffect( void )
 void CTFPlayer::RemoveTeleportEffect( void )
 {
 	m_Shared.RemoveCond( TF_COND_TELEPORTED );
+	m_Shared.SetTeleporterEffectColor( TEAM_UNASSIGNED );
 }
 
 //-----------------------------------------------------------------------------

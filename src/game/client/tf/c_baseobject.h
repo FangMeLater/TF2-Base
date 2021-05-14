@@ -95,6 +95,7 @@ public:
 	virtual void	RecalculateIDString( void );
 
 	int GetType() const { return m_iObjectType; }
+	int GetObjectMode() { return m_iObjectMode; }
 	bool IsOwnedByLocalPlayer() const;
 	C_TFPlayer *GetOwner();
 
@@ -105,8 +106,10 @@ public:
 	float			GetPercentageConstructed( void ) { return m_flPercentageConstructed; }
 
 	bool			IsPlacing( void ) const { return m_bPlacing; }
+	bool			IsBeingCarried(void) const { return m_bCarried; }
 	bool			IsBuilding( void ) const { return m_bBuilding; }
 	virtual bool	IsUpgrading( void ) const { return false; }
+	bool			IsRedeploying( void ) const { return m_bCarryDeploy; }
 
 	virtual void	FinishedBuilding( void ) { return; }
 
@@ -134,6 +137,13 @@ public:
 	virtual const char *GetHudStatusIcon( void );
 
 	virtual BuildingHudAlert_t GetBuildingAlertLevel( void );
+
+	// Upgrades
+	int GetUpgradeLevel( void ) { return m_iUpgradeLevel; }
+	int GetUpgradeMetal( void ) { return m_iUpgradeMetal; }
+	int GetMaxUpgradeLevel( void ) { return m_iHighestUpgradeLevel; }
+
+	int GetUpgradeMetalRequired( void ) { return SENTRYGUN_UPGRADE_METAL; }
 
 private:
 	void StopAnimGeneratedSounds( void );
@@ -228,6 +238,10 @@ private:
 	bool			m_bBuilding;
 	bool			m_bWasPlacing;
 	bool			m_bPlacing;
+	bool			m_bCarried;
+	bool			m_bWasCarried;
+	bool			m_bCarryDeploy;
+	bool			m_bMiniBuilding;
 	bool			m_bDisabled;
 	bool			m_bOldDisabled;
 	float			m_flPercentageConstructed;
@@ -245,6 +259,16 @@ private:
 
 	int m_nObjectOldSequence;
 
+protected:
+
+	int m_iUpgradeLevel;
+	int	m_iOldUpgradeLevel;
+	int m_iUpgradeMetal;
+	int m_iUpgradeMetalRequired;
+	int m_iHighestUpgradeLevel;
+	int m_iObjectMode;
+	bool m_bDisposableBuilding;
+	bool m_bWasMapPlaced;
 
 private:
 	C_BaseObject( const C_BaseObject & ); // not defined, not accessible

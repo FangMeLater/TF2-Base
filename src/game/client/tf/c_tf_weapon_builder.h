@@ -42,6 +42,7 @@ public:
 	virtual const char *GetWorldModel( void ) const;
 
 	virtual bool Deploy( void );
+	virtual bool CanHolster( void ) const;
 
 	C_BaseObject	*GetPlacementModel( void ) { return m_hObjectBeingBuilt.Get(); }
 
@@ -74,6 +75,7 @@ public:
 	// Builder Data
 	int			m_iBuildState;
 	unsigned int m_iObjectType;
+	unsigned int m_iObjectMode;
 	float		m_flStartTime;
 	float		m_flTotalTime;
 

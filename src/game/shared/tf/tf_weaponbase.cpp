@@ -397,6 +397,7 @@ bool CTFWeaponBase::Deploy( void )
 #endif
 
 	float flOriginalPrimaryAttack = m_flNextPrimaryAttack;
+	float flOriginalSecondaryAttack = m_flNextSecondaryAttack;
 
 	bool bDeploy = BaseClass::Deploy();
 
@@ -407,6 +408,7 @@ bool CTFWeaponBase::Deploy( void )
 		// people exploiting weapon switches to allow weapons to fire faster.
 		float flDeployTime = 0.67;
 		m_flNextPrimaryAttack = max( flOriginalPrimaryAttack, gpGlobals->curtime + flDeployTime );
+		m_flNextSecondaryAttack = max( flOriginalSecondaryAttack, gpGlobals->curtime + flDeployTime );
 
 		CTFPlayer *pPlayer = ToTFPlayer( GetOwner() );
 		if (!pPlayer)

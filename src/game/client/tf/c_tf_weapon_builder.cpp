@@ -79,9 +79,6 @@ const char *C_TFWeaponBuilder::GetCurrentSelectionObjectName( void )
 //-----------------------------------------------------------------------------
 bool C_TFWeaponBuilder::Deploy( void )
 {
-	m_iViewModelIndex = modelinfo->GetModelIndex( GetViewModel( 0 ) );
-	m_iWorldModelIndex = modelinfo->GetModelIndex( GetWorldModel() );
-
 	bool bDeploy = BaseClass::Deploy();
 
 	if ( bDeploy )
@@ -94,9 +91,28 @@ bool C_TFWeaponBuilder::Deploy( void )
 			return false;
 
 		pPlayer->SetNextAttack( gpGlobals->curtime );
+
+		m_iViewModelIndex = modelinfo->GetModelIndex( GetViewModel(0) );
+		m_iWorldModelIndex = modelinfo->GetModelIndex( GetWorldModel() );
 	}
 
 	return bDeploy;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+bool C_TFWeaponBuilder::CanHolster( void ) const
+{
+	// If player is hauling a building he can't switch away without dropping it.
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+
+	if ( pOwner && pOwner->m_Shared.IsCarryingObject() )
+	{
+		return false;
+	}
+
+	return BaseClass::CanHolster();
 }
 
 //-----------------------------------------------------------------------------
@@ -268,7 +284,7 @@ bool C_TFWeaponBuilder::CanBeSelected( void )
 	if ( !pOwner )
 		return false;
 
-	if ( pOwner->CanBuild( m_iObjectType ) != CB_CAN_BUILD )
+	if ( pOwner->CanBuild( m_iObjectType, m_iObjectMode ) != CB_CAN_BUILD )
 		return false;
 
 	return HasAmmo();

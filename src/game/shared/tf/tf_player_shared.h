@@ -201,7 +201,20 @@ public:
 	bool	IsPlayerDominatingMe( int iPlayerIndex );
 	void	SetPlayerDominatingMe( CTFPlayer *pPlayer, bool bDominated );
 
+	bool	IsCarryingObject( void ) { return m_bCarryingObject; }
+
+#ifdef GAME_DLL
+	void				SetCarriedObject( CBaseObject *pObj );
+	CBaseObject*		GetCarriedObject( void );
+#endif
+
 	int GetSequenceForDeath( CBaseAnimating *pAnim, int iDamageCustom );
+
+	int		GetTeleporterEffectColor( void ) { return m_iTeleporterEffectColor; }
+	void	SetTeleporterEffectColor( int iTeam ) { m_iTeleporterEffectColor = iTeam; }
+#ifdef CLIENT_DLL
+	bool	ShouldShowRecentlyTeleported( void );
+#endif
 
 private:
 
@@ -293,9 +306,6 @@ private:
 
 	float m_flDisguiseCompleteTime;
 
-	int	m_nOldConditions;
-	int	m_nOldDisguiseClass;
-
 	CNetworkVar( int, m_iDesiredPlayerClass );
 
 	float m_flNextBurningSound;
@@ -313,7 +323,12 @@ private:
 
 	CNetworkArray( bool, m_bPlayerDominated, MAX_PLAYERS+1 );		// array of state per other player whether player is dominating other players
 	CNetworkArray( bool, m_bPlayerDominatingMe, MAX_PLAYERS+1 );	// array of state per other player whether other players are dominating this player
-	
+
+	CNetworkHandle( CBaseObject, m_hCarriedObject );
+	CNetworkVar( bool, m_bCarryingObject );
+
+	CNetworkVar( int, m_iTeleporterEffectColor );
+
 #ifdef GAME_DLL
 	float	m_flNextCritUpdate;
 	CUtlVector<CTFDamageEvent> m_DamageEvents;
@@ -323,6 +338,10 @@ private:
 	CTFWeaponInfo *m_pDisguiseWeaponInfo;
 
 	WEAPON_FILE_INFO_HANDLE	m_hDisguiseWeaponInfo;
+
+	int	m_nOldConditions;
+	int	m_nOldDisguiseClass;
+	int m_nOldDisguiseTeam;
 #endif
 };			   
 

@@ -362,6 +362,10 @@ void CBaseObject::SetActivity( Activity act )
 		m_Activity = act; 
 		SetObjectSequence( sequence );
 	}
+	else
+	{
+		m_Activity = (Activity)ACTIVITY_NOT_AVAILABLE;
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -419,6 +423,21 @@ void CBaseObject::OnGoActive( void )
 		{
 			SetBodygroup( index, 1 );
 		}
+	}
+
+	// TODO: Move this to InitializeMapPlacedObject
+
+	// Rapidly go through upgrade levels if the keyvalue is set.
+	if ( m_iDefaultUpgrade > 0 )
+	{
+		for ( int i = 0; i < min( m_iDefaultUpgrade, GetMaxUpgradeLevel() - 1 ); i++ )
+		{
+			StartUpgrading();
+			FinishUpgrading();
+		}
+
+		// Don't snap to default level again if we get picked up and re-deployed.
+		m_iDefaultUpgrade = 0;
 	}
 #endif
 }

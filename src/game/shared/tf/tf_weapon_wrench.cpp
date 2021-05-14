@@ -46,10 +46,10 @@ CTFWrench::CTFWrench()
 }
 
 #ifdef GAME_DLL
-void CTFWrench::OnFriendlyBuildingHit( CBaseObject *pObject, CTFPlayer *pPlayer )
+void CTFWrench::OnFriendlyBuildingHit( CBaseObject *pObject, CTFPlayer *pPlayer, Vector vecHitPos )
 {
 	// Did this object hit do any work? repair or upgrade?
-	bool bUsefulHit = pObject->InputWrenchHit( pPlayer );
+	bool bUsefulHit = pObject->InputWrenchHit( pPlayer, this, vecHitPos );
 
 	CDisablePredictionFiltering disabler;
 
@@ -107,7 +107,7 @@ void CTFWrench::Smack( void )
 		 trace.m_pEnt->GetTeamNumber() == pPlayer->GetTeamNumber() )
 	{
 #ifdef GAME_DLL
-		OnFriendlyBuildingHit( dynamic_cast< CBaseObject * >( trace.m_pEnt ), pPlayer );
+		OnFriendlyBuildingHit( dynamic_cast< CBaseObject * >( trace.m_pEnt ), pPlayer, trace.endpos );
 #endif
 	}
 	else

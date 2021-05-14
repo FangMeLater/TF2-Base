@@ -1893,6 +1893,8 @@ void CTFGameRules::PlayerKilled( CBasePlayer *pVictim, const CTakeDamageInfo &in
 	if ( pAssister )
 	{
 		CTF_GameStats.Event_AssistKill( ToTFPlayer( pAssister ), pVictim );
+		if ( pObject )
+			pObject->IncrementAssists();
 	}
 
 	BaseClass::PlayerKilled( pVictim, info );
@@ -1971,6 +1973,12 @@ const char *CTFGameRules::GetKillingWeaponName( const CTakeDamageInfo &info, CTF
 			break;
 		case TF_DMG_CUSTOM_TAUNTATK_FENCING:
 			pszCustomKill = "taunt_spy";
+			break;
+		case TF_DMG_CUSTOM_TELEFRAG:
+			pszCustomKill = "telefrag";
+			break;
+		case TF_DMG_CUSTOM_CARRIED_BUILDING:
+			pszCustomKill = "building_carried_destroyed";
 			break;
 	}
 
@@ -2101,7 +2109,7 @@ void CTFGameRules::DeathNotice( CBasePlayer *pVictim, const CTakeDamageInfo &inf
 	CTFPlayer *pTFPlayerVictim = ToTFPlayer( pVictim );
 	CBaseEntity *pInflictor = info.GetInflictor();
 	CBaseEntity *pKiller = info.GetAttacker();
-	CBasePlayer *pScorer = GetDeathScorer( pKiller, pInflictor, pVictim );
+	CTFPlayer *pScorer = ToTFPlayer( GetDeathScorer( pKiller, pInflictor, pVictim ) );
 	CTFPlayer *pAssister = ToTFPlayer( GetAssister( pVictim, pScorer, pInflictor ) );
 
 	// Work out what killed the player, and send a message to all clients about it
@@ -2123,6 +2131,8 @@ void CTFGameRules::DeathNotice( CBasePlayer *pVictim, const CTakeDamageInfo &inf
 		event->SetInt( "damagebits", info.GetDamageType() );
 		event->SetInt( "customkill", info.GetDamageCustom() );
 		event->SetInt( "priority", 7 );	// HLTV event priority, not transmitted
+		event->SetInt( "death_flags", pTFPlayerVictim->GetDeathFlags() );
+#if 0
 		if ( pTFPlayerVictim->GetDeathFlags() & TF_DEATH_DOMINATION )
 		{
 			event->SetInt( "dominated", 1 );
@@ -2139,6 +2149,7 @@ void CTFGameRules::DeathNotice( CBasePlayer *pVictim, const CTakeDamageInfo &inf
 		{
 			event->SetInt( "assister_revenge", 1 );
 		}
+#endif
 
 		gameeventmanager->FireEvent( event );
 	}		

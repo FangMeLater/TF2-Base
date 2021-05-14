@@ -16,6 +16,7 @@
 #include "tf_weapon_builder.h"
 #include "vguiscreen.h"
 #include "tf_gamerules.h"
+#include "tf_obj_teleporter.h"
 
 extern ConVar tf2_object_hard_limits;
 extern ConVar tf_fastbuild;
@@ -62,6 +63,14 @@ void CTFWeaponBuilder::SetSubType( int iSubType )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFWeaponBuilder::SetObjectMode( int iObjectMode )
+{
+	m_iObjectMode = iObjectMode;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose:
 //-----------------------------------------------------------------------------
 void CTFWeaponBuilder::Precache( void )
@@ -97,7 +106,7 @@ bool CTFWeaponBuilder::CanDeploy( void )
 	if (!pPlayer)
 		return false;
 
-	if ( pPlayer->CanBuild( m_iObjectType ) != CB_CAN_BUILD )
+	if ( pPlayer->CanBuild( m_iObjectType, m_iObjectMode ) != CB_CAN_BUILD )
 	{
 		return false;
 	}
@@ -110,9 +119,6 @@ bool CTFWeaponBuilder::CanDeploy( void )
 //-----------------------------------------------------------------------------
 bool CTFWeaponBuilder::Deploy( void )
 {
-	m_iViewModelIndex = modelinfo->GetModelIndex( GetViewModel( 0 ) );
-	m_iWorldModelIndex = modelinfo->GetModelIndex( GetWorldModel() );
-
 	bool bDeploy = BaseClass::Deploy();
 
 	if ( bDeploy )
@@ -128,6 +134,9 @@ bool CTFWeaponBuilder::Deploy( void )
 
 		pPlayer->SetNextAttack( gpGlobals->curtime );
 
+		m_iViewModelIndex = modelinfo->GetModelIndex( GetViewModel(0) );
+		m_iWorldModelIndex = modelinfo->GetModelIndex( GetWorldModel() );
+
 		m_flNextDenySound = 0;
 
 		// Set off the hint here, because we don't know until now if our building
@@ -137,6 +146,12 @@ bool CTFWeaponBuilder::Deploy( void )
 			// set the alt-fire hint so it gets removed when we holster
 			m_iAltFireHint = HINT_ALTFIRE_ROTATE_BUILDING;
 			pPlayer->StartHintTimer( m_iAltFireHint );
+		}
+
+		if ( m_hObjectBeingBuilt && m_hObjectBeingBuilt->IsBeingCarried() )
+		{
+			// We just pressed attack2, don't immediately rotate it.
+			m_bInAttack2 = true;
 		}
 	}
 
@@ -158,6 +173,22 @@ Activity CTFWeaponBuilder::GetDrawActivity( void )
 }
 
 //-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+bool CTFWeaponBuilder::CanHolster( void ) const
+{
+	// If player is hauling a building he can't switch away without dropping it.
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+
+	if ( pOwner && pOwner->m_Shared.IsCarryingObject() )
+	{
+		return false;
+	}
+
+	return BaseClass::CanHolster();
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: Stop placement when holstering
 //-----------------------------------------------------------------------------
 bool CTFWeaponBuilder::Holster( CBaseCombatWeapon *pSwitchingTo )
@@ -166,7 +197,15 @@ bool CTFWeaponBuilder::Holster( CBaseCombatWeapon *pSwitchingTo )
 	{
 		SetCurrentState( BS_IDLE );
 	}
+
 	StopPlacement();
+
+	// Make sure hauling status is cleared.
+	CTFPlayer *pOwner = GetTFPlayerOwner();
+	if ( pOwner && pOwner->m_Shared.IsCarryingObject() )
+	{
+		pOwner->m_Shared.SetCarriedObject( NULL );
+	}
 
 	return BaseClass::Holster(pSwitchingTo);
 }
@@ -190,7 +229,7 @@ void CTFWeaponBuilder::ItemPostFrame( void )
 	}
 
 	// Check that I still have enough resources to build this item
-	if ( pOwner->CanBuild( m_iObjectType ) != CB_CAN_BUILD )
+	if ( pOwner->CanBuild( m_iObjectType, m_iObjectMode ) != CB_CAN_BUILD )
 	{
 		SwitchOwnersWeaponToLast();
 	}
@@ -265,7 +304,33 @@ void CTFWeaponBuilder::PrimaryAttack( void )
 					pOwner->DoAnimationEvent( PLAYERANIMEVENT_ATTACK_GRENADE );
 				}
 
+				// Need to save this for later since StartBuilding will clear m_hObjectBeingBuilt.
+				CBaseObject *pParentObject = m_hObjectBeingBuilt->GetParentObject();
+
 				StartBuilding();
+
+				// Attaching a sapper to a teleporter automatically saps another end.
+				if ( GetType() == OBJ_ATTACHMENT_SAPPER )
+				{
+					CObjectTeleporter *pTeleporter = dynamic_cast<CObjectTeleporter *>( pParentObject );
+
+					if ( pTeleporter )
+					{
+						CObjectTeleporter *pMatch = pTeleporter->GetMatchingTeleporter();
+
+						// If the other end is not already sapped then place a sapper on it.
+						if ( pMatch && !pMatch->IsPlacing() && !pMatch->HasSapper() )
+						{
+							SetCurrentState( BS_PLACING );
+							StartPlacement();
+							if ( m_hObjectBeingBuilt.Get() )
+							{
+								m_hObjectBeingBuilt->UpdateAttachmentPlacement( pMatch );
+								StartBuilding();
+							}
+						}
+					}
+				}
 
 				// Should we switch away?
 				if ( iFlags & OF_ALLOW_REPEAT_PLACEMENT )
@@ -433,10 +498,18 @@ void CTFWeaponBuilder::StartPlacement( void )
 {
 	StopPlacement();
 
+	if ( GetOwner() && ToTFPlayer( GetOwner() )->m_Shared.GetCarriedObject() )
+	{
+		m_hObjectBeingBuilt = ToTFPlayer( GetOwner() )->m_Shared.GetCarriedObject();
+		m_hObjectBeingBuilt->StartPlacement( ToTFPlayer( GetOwner() ) );
+		return;
+	}
+
 	// Create the slab
 	m_hObjectBeingBuilt = (CBaseObject*)CreateEntityByName( GetObjectInfo( m_iObjectType )->m_pClassName );
 	if ( m_hObjectBeingBuilt )
 	{
+		m_hObjectBeingBuilt->SetObjectMode( m_iObjectMode );
 		m_hObjectBeingBuilt->Spawn();
 		m_hObjectBeingBuilt->StartPlacement( ToTFPlayer( GetOwner() ) );
 
@@ -489,7 +562,15 @@ bool CTFWeaponBuilder::IsValidPlacement( void )
 //-----------------------------------------------------------------------------
 void CTFWeaponBuilder::StartBuilding( void )
 {
+	CTFPlayer *pPlayer = ToTFPlayer( GetOwner() );
 	CBaseObject *pObj = m_hObjectBeingBuilt.Get();
+
+	if ( pPlayer && pPlayer->m_Shared.IsCarryingObject() )
+	{
+		Assert( pObj );
+
+		pObj->DropCarriedObject( pPlayer );
+	}
 
 	Assert( pObj );
 
@@ -497,7 +578,6 @@ void CTFWeaponBuilder::StartBuilding( void )
 
 	m_hObjectBeingBuilt = NULL;
 
-	CTFPlayer *pPlayer = ToTFPlayer( GetOwner() );
 	if ( pPlayer )
 	{
 		pPlayer->RemoveInvisibility();
@@ -539,6 +619,9 @@ int CTFWeaponBuilder::GetPosition( void ) const
 //-----------------------------------------------------------------------------
 const char *CTFWeaponBuilder::GetPrintName( void ) const
 {
+	if ( GetObjectInfo( m_iObjectType )->m_AltModes.Count() > 0 )
+		return GetObjectInfo( m_iObjectType )->m_AltModes.Element( m_iObjectMode * 3 + 0 );
+
 	return GetObjectInfo( m_iObjectType )->m_pStatusName;
 }
 

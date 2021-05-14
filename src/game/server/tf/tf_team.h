@@ -52,6 +52,9 @@ public:
 	void			SetRole( int iTeamRole ) { m_iRole = iTeamRole; }
 	int				GetRole( void ) { return m_iRole; }
 
+
+	void 			GetOpposingTFTeamList( CUtlVector<CTFTeam *> *pTeamList );
+
 private:
 	
 	color32						m_TeamColor;

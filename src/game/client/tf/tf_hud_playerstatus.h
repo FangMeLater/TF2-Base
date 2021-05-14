@@ -115,6 +115,7 @@ private:
 	CTFHealthPanel		*m_pHealthImage;
 	CTFImagePanel		*m_pHealthBonusImage;
 	vgui::ImagePanel	*m_pHealthImageBG;
+	vgui::ImagePanel	*m_pHealthImageBuildingBG;
 
 	int					m_nHealth;
 	int					m_nMaxHealth;

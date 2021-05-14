@@ -28,8 +28,6 @@ public:
 
 	C_ObjectSentrygun();
 
-	int GetUpgradeLevel( void ) { return m_iUpgradeLevel; }
-
 	void GetAmmoCount( int &iShells, int &iMaxShells, int &iRockets, int & iMaxRockets );
 
 	void GetStatusText( wchar_t *pStatus, int iMaxStatusLen );
@@ -37,16 +35,13 @@ public:
 	virtual bool	IsUpgrading( void ) const;
 
 	virtual void GetTargetIDString( wchar_t *sIDString, int iMaxLenInBytes );
-	virtual void GetTargetIDDataString( wchar_t *sDataString, int iMaxLenInBytes );
 
 	virtual BuildingHudAlert_t GetBuildingAlertLevel( void );
-
-	int GetUpgradeMetal( void ) { return m_iUpgradeMetal; }
-	int GetUpgradeMetalRequired( void ) { return SENTRYGUN_UPGRADE_METAL; }
 
 	virtual const char *GetHudStatusIcon( void );
 
 	int GetKills( void ) { return m_iKills; }
+	int GetAssists( void ) { return m_iAssists; }
 
 	virtual void GetShadowRenderBounds( Vector &mins, Vector &maxs, ShadowType_t shadowType );
 
@@ -71,16 +66,12 @@ private:
 private:
 	int m_iState;
 
-	int m_iUpgradeLevel;
-	int	m_iOldUpgradeLevel;
-
 	int m_iAmmoShells;
 	int m_iMaxAmmoShells;
 	int m_iAmmoRockets;
 
-	int m_iUpgradeMetal;
-
 	int m_iKills;
+	int m_iAssists;
 
 	CNewParticleEffect *m_pDamageEffects;
 

@@ -117,6 +117,7 @@ public:
 	void				SetHealthBuffTime( float flTime )		{ m_flHealthBuffTime = flTime; }
 
 	CTFWeaponBase		*GetActiveTFWeapon( void ) const;
+	bool				IsActiveTFWeapon(int iWeaponID);
 
 	void				SaveMe( void );
 
@@ -188,6 +189,9 @@ public:
 	void				ClientHearVox( const char *pSentence );
 	void				DisplayLocalItemStatus( CTFGoal *pGoal );
 
+	bool				CanPickupBuilding( CBaseObject *pObject );
+	bool				TryToPickupBuilding( void );
+
 	int					BuildObservableEntityList( void );
 	virtual int			GetNextObserverSearchStartPoint( bool bReverse ); // Where we should start looping the player list in a FindNextObserverTarget call
 	virtual CBaseEntity *FindNextObserverTarget(bool bReverse);
@@ -235,11 +239,11 @@ public:
 	void AddBuildResources( int iAmount );
 
 	bool IsBuilding( void );
-	int CanBuild( int iObjectType );
+	int CanBuild( int iObjectType, int iObjectMode );
 
 	CBaseObject	*GetObject( int index );
 	int	GetObjectCount( void );
-	int GetNumObjects( int iObjectType );
+	int GetNumObjects( int iObjectType, int iObjectMode );
 	void RemoveAllObjects( void );
 	void StopPlacement( void );
 	int	StartedBuildingObject( int iObjectType );
@@ -249,8 +253,8 @@ public:
 	void OwnedObjectDestroyed( CBaseObject *pObject );
 	void RemoveObject( CBaseObject *pObject );
 	bool PlayerOwnsObject( CBaseObject *pObject );
-	void DetonateOwnedObjectsOfType( int iType );
-	void StartBuildingObjectOfType( int iType );
+	void DetonateOwnedObjectsOfType( int iType, int iMode );
+	void StartBuildingObjectOfType( int iType, int iMode );
 
 	CTFTeam *GetTFTeam( void );
 	CTFTeam *GetOpposingTFTeam( void );
@@ -352,6 +356,8 @@ public:
 	int		no_exit_teleporter_message;
 
 	float	m_flNextNameChangeTime;
+
+	float	m_flNextCarryTalkTime;
 
 	bool	m_bBlastLaunched;
 

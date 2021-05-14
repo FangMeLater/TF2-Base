@@ -38,6 +38,7 @@
 #include "tf_team.h"
 #include "tf_gamestats.h"
 #include "tf_playerclass.h"
+#include "tf_weapon_builder.h"
 #endif
 
 ConVar tf_spy_invis_time( "tf_spy_invis_time", "1.0", FCVAR_DEVELOPMENTONLY | FCVAR_REPLICATED, "Transition time in and out of spy invisibility", true, 0.1, true, 5.0 );
@@ -125,6 +126,9 @@ BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropInt( RECVINFO( m_nAirDucked ) ),
 	RecvPropInt( RECVINFO( m_nPlayerState ) ),
 	RecvPropInt( RECVINFO( m_iDesiredPlayerClass ) ),
+	RecvPropEHandle( RECVINFO( m_hCarriedObject ) ),
+	RecvPropBool( RECVINFO( m_bCarryingObject ) ),
+	RecvPropInt( RECVINFO( m_iTeleporterEffectColor ) ),
 	// Spy.
 	RecvPropTime( RECVINFO( m_flInvisChangeCompleteTime ) ),
 	RecvPropInt( RECVINFO( m_nDisguiseTeam ) ),
@@ -166,6 +170,9 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	SendPropInt( SENDINFO( m_nAirDucked ), 2, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
 	SendPropInt( SENDINFO( m_nPlayerState ), Q_log2( TF_STATE_COUNT )+1, SPROP_UNSIGNED ),
 	SendPropInt( SENDINFO( m_iDesiredPlayerClass ), Q_log2( TF_CLASS_COUNT_ALL )+1, SPROP_UNSIGNED ),
+	SendPropEHandle( SENDINFO( m_hCarriedObject ) ),
+	SendPropBool( SENDINFO( m_bCarryingObject ) ),
+	SendPropInt( SENDINFO( m_iTeleporterEffectColor ), TEAMNUM_NUM_BITS, 0 ),
 	// Spy
 	SendPropTime( SENDINFO( m_flInvisChangeCompleteTime ) ),
 	SendPropInt( SENDINFO( m_nDisguiseTeam ), 3, SPROP_UNSIGNED ),
@@ -197,6 +204,8 @@ CTFPlayerShared::CTFPlayerShared()
 	m_flStealthNextChangeTime = 0.0f;
 	m_iCritMult = 0;
 	m_flInvisibility = 0.0f;
+
+	m_iTeleporterEffectColor = TEAM_UNASSIGNED;
 
 #ifdef CLIENT_DLL
 	m_iDisguiseWeaponModelIndex = -1;
@@ -317,6 +326,7 @@ void CTFPlayerShared::OnPreDataChanged( void )
 {
 	m_nOldConditions = m_nPlayerCond;
 	m_nOldDisguiseClass = GetDisguiseClass();
+	m_nOldDisguiseTeam = GetDisguiseTeam();
 	m_iOldDisguiseWeaponModelIndex = m_iDisguiseWeaponModelIndex;
 }
 
@@ -333,7 +343,7 @@ void CTFPlayerShared::OnDataChanged( void )
 		m_nOldConditions = m_nPlayerCond;
 	}	
 
-	if ( m_nOldDisguiseClass != GetDisguiseClass() )
+	if ( m_nOldDisguiseClass != GetDisguiseClass() || m_nOldDisguiseTeam != GetDisguiseTeam() )
 	{
 		OnDisguiseChanged();
 	}
@@ -883,6 +893,7 @@ void CTFPlayerShared::OnDisguiseChanged( void )
 {
 	// recalc disguise model index
 	RecalcDisguiseWeapon();
+	m_pOuter->UpdateRecentlyTeleportedEffect();
 }
 #endif
 
@@ -932,13 +943,37 @@ void CTFPlayerShared::OnRemoveInvulnerable( void )
 #endif
 }
 
+#ifdef CLIENT_DLL
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CTFPlayerShared::ShouldShowRecentlyTeleported( void )
+{
+	if ( m_pOuter->IsPlayerClass( TF_CLASS_SPY ) )
+	{
+		if ( InCond( TF_COND_STEALTHED ) )
+			return false;
+
+		if ( InCond( TF_COND_DISGUISED ) && ( m_pOuter->IsLocalPlayer() || !m_pOuter->InSameTeam( C_TFPlayer::GetLocalTFPlayer() ) ) )
+		{
+			if ( GetDisguiseTeam() != m_iTeleporterEffectColor )
+				return false;
+		}
+		else if ( m_pOuter->GetTeamNumber() != m_iTeleporterEffectColor )
+			return false;
+	}
+
+	return ( InCond( TF_COND_TELEPORTED ) );
+}
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
 void CTFPlayerShared::OnAddTeleported( void )
 {
 #ifdef CLIENT_DLL
-	m_pOuter->OnAddTeleported();
+	m_pOuter->UpdateRecentlyTeleportedEffect();
 #endif
 }
 
@@ -948,7 +983,7 @@ void CTFPlayerShared::OnAddTeleported( void )
 void CTFPlayerShared::OnRemoveTeleported( void )
 {
 #ifdef CLIENT_DLL
-	m_pOuter->OnRemoveTeleported();
+	m_pOuter->UpdateRecentlyTeleportedEffect();
 #endif
 }
 
@@ -1043,6 +1078,7 @@ void CTFPlayerShared::OnAddStealthed( void )
 #ifdef CLIENT_DLL
 	m_pOuter->EmitSound( "Player.Spy_Cloak" );
 	m_pOuter->RemoveAllDecals();
+	m_pOuter->UpdateRecentlyTeleportedEffect();
 #else
 #endif
 
@@ -1074,6 +1110,7 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 {
 #ifdef CLIENT_DLL
 	m_pOuter->EmitSound( "Player.Spy_UnCloak" );
+	m_pOuter->UpdateRecentlyTeleportedEffect();
 #endif
 
 	m_pOuter->HolsterOffHandWeapon();
@@ -2169,6 +2206,19 @@ CTFWeaponBase *CTFPlayer::GetActiveTFWeapon( void ) const
 }
 
 //-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CTFPlayer::IsActiveTFWeapon( int iWeaponID )
+{
+	CTFWeaponBase *pWeapon = GetActiveTFWeapon();
+	if ( pWeapon )
+	{
+		return pWeapon->GetWeaponID() == iWeaponID;
+	}
+	return false;
+}
+
+//-----------------------------------------------------------------------------
 // Purpose: How much build resource ( metal ) does this player have
 //-----------------------------------------------------------------------------
 int CTFPlayer::GetBuildResources( void )
@@ -2241,6 +2291,12 @@ void CTFPlayer::TeamFortress_SetSpeed()
 			if (maxfbspeed > 80)
 				maxfbspeed = 80;
 		}
+	}
+
+	// Engineer moves slower while a hauling an object.
+	if ( playerclass == TF_CLASS_ENGINEER && m_Shared.IsCarryingObject() )
+	{
+		maxfbspeed *= 0.75f;
 	}
 
 	if ( m_Shared.InCond( TF_COND_STEALTHED ) )
@@ -2318,7 +2374,7 @@ bool CTFPlayer::HasTheFlag( void )
 //-----------------------------------------------------------------------------
 // Purpose: Return true if this player's allowed to build another one of the specified object
 //-----------------------------------------------------------------------------
-int CTFPlayer::CanBuild( int iObjectType )
+int CTFPlayer::CanBuild( int iObjectType, int iObjectMode )
 {
 	if ( iObjectType < 0 || iObjectType >= OBJ_LAST )
 		return CB_UNKNOWN_OBJECT;
@@ -2326,13 +2382,26 @@ int CTFPlayer::CanBuild( int iObjectType )
 #ifndef CLIENT_DLL
 	CTFPlayerClass *pCls = GetPlayerClass();
 
+	if ( m_Shared.IsCarryingObject() )
+	{
+		CBaseObject *pObject = m_Shared.GetCarriedObject();
+		if ( pObject && pObject->GetType() == iObjectType && pObject->GetObjectMode() == iObjectMode )
+		{
+			return CB_CAN_BUILD;
+		}
+		else
+		{
+			Assert( 0 );
+		}
+	}
+
 	if ( pCls && pCls->CanBuildObject( iObjectType ) == false )
 	{
 		return CB_CANNOT_BUILD;
 	}
 #endif
 
-	int iObjectCount = GetNumObjects( iObjectType );
+	int iObjectCount = GetNumObjects( iObjectType, iObjectMode );
 
 	// Make sure we haven't hit maximum number
 	if ( iObjectCount >= GetObjectInfo( iObjectType )->m_nMaxObjects && GetObjectInfo( iObjectType )->m_nMaxObjects != -1 )
@@ -2355,15 +2424,15 @@ int CTFPlayer::CanBuild( int iObjectType )
 //-----------------------------------------------------------------------------
 // Purpose: Get the number of objects of the specified type that this player has
 //-----------------------------------------------------------------------------
-int CTFPlayer::GetNumObjects( int iObjectType )
+int CTFPlayer::GetNumObjects( int iObjectType, int iObjectMode )
 {
 	int iCount = 0;
-	for (int i = 0; i < GetObjectCount(); i++)
+	for ( int i = 0; i < GetObjectCount(); i++ )
 	{
-		if ( !GetObject(i) )
+		if ( !GetObject( i ) )
 			continue;
 
-		if ( GetObject(i)->GetType() == iObjectType )
+		if ( GetObject( i )->GetType() == iObjectType && GetObject( i )->GetObjectMode() == iObjectMode && !GetObject( i )->IsBeingCarried() )
 		{
 			iCount++;
 		}
@@ -2522,6 +2591,111 @@ bool CTFPlayer::CanAttack( void )
 	return true;
 }
 
+bool CTFPlayer::CanPickupBuilding( CBaseObject *pObject )
+{
+	if ( !pObject )
+		return false;
+
+	if ( m_Shared.IsLoser() )
+		return false;
+
+	if ( IsActiveTFWeapon( TF_WEAPON_BUILDER ) )
+		return false;
+
+	if ( pObject->GetBuilder() != this )
+		return false;
+
+	if ( pObject->IsBuilding() || pObject->IsUpgrading() || pObject->IsRedeploying() )
+		return false;
+
+	return true;
+}
+
+#ifdef GAME_DLL
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CTFPlayer::TryToPickupBuilding( void )
+{
+	if ( IsActiveTFWeapon( TF_WEAPON_BUILDER ) )
+		return false;
+
+	Vector vecForward; 
+	AngleVectors( EyeAngles(), &vecForward );
+	Vector vecSwingStart = Weapon_ShootPosition();
+	// 5500 with Rescue Ranger.
+	float flRange = 150.0f;
+	Vector vecSwingEnd = vecSwingStart + vecForward * flRange;
+
+	// only trace against objects
+
+	// See if we hit anything.
+	trace_t trace;	
+
+	CTraceFilterIgnorePlayers traceFilter( NULL, COLLISION_GROUP_NONE );
+	UTIL_TraceLine( vecSwingStart, vecSwingEnd, MASK_SOLID, &traceFilter, &trace );
+
+	if ( trace.fraction < 1.0f &&
+		 trace.m_pEnt &&
+		 trace.m_pEnt->IsBaseObject() &&
+		 trace.m_pEnt->GetTeamNumber() == GetTeamNumber() )
+	{
+		CBaseObject *pObject = dynamic_cast<CBaseObject*>( trace.m_pEnt );
+		if ( CanPickupBuilding( pObject ) )
+		{
+			CTFWeaponBase *pWpn = Weapon_OwnsThisID( TF_WEAPON_BUILDER );
+
+			if ( pWpn )
+			{
+				CTFWeaponBuilder *pBuilder = dynamic_cast< CTFWeaponBuilder * >( pWpn );
+
+				// Is this the builder that builds the object we're looking for?
+				if ( pBuilder )
+				{
+					pObject->MakeCarriedObject( this );
+
+					pBuilder->SetSubType( pObject->ObjectType() );
+					pBuilder->SetObjectMode( pObject->GetObjectMode() );
+
+					SpeakConceptIfAllowed( MP_CONCEPT_PICKUP_BUILDING );
+
+					// try to switch to this weapon
+					Weapon_Switch( pBuilder );
+
+					m_flNextCarryTalkTime = gpGlobals->curtime + RandomFloat( 6.0f, 12.0f );
+
+					return true;
+				}
+			}
+		}
+	}
+	return false;
+}
+
+void CTFPlayerShared::SetCarriedObject( CBaseObject *pObj )
+{
+	if ( pObj )
+	{
+		m_bCarryingObject = true;
+		m_hCarriedObject = pObj;
+	}
+	else
+	{
+		m_bCarryingObject = false;
+		m_hCarriedObject = NULL;
+	}
+
+	m_pOuter->TeamFortress_SetSpeed();
+}
+
+CBaseObject* CTFPlayerShared::GetCarriedObject(void)
+{
+	CBaseObject *pObj = m_hCarriedObject.Get();
+	return pObj;
+}
+
+#endif
+
 //-----------------------------------------------------------------------------
 // Purpose: Weapons can call this on secondary attack and it will link to the class
 // ability
@@ -2567,6 +2741,15 @@ bool CTFPlayer::DoClassSpecialSkill( void )
 			}
 		}
 		bDoSkill = true;
+		break;
+
+	case TF_CLASS_ENGINEER:
+		{
+			bDoSkill = false;
+#ifdef GAME_DLL
+			bDoSkill = TryToPickupBuilding();
+#endif
+		}
 		break;
 
 	default:

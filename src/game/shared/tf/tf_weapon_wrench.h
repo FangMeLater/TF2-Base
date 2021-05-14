@@ -33,7 +33,7 @@ public:
 	virtual void		Smack( void );
 
 #ifdef GAME_DLL
-	void OnFriendlyBuildingHit( CBaseObject *pObject, CTFPlayer *pPlayer );
+	virtual void OnFriendlyBuildingHit( CBaseObject *pObject, CTFPlayer *pPlayer, Vector vecHitPos );
 #endif
 
 private:

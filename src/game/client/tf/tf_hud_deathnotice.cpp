@@ -34,8 +34,7 @@
 const char *szLocalizedObjectNames[OBJ_LAST] =
 {
 	"#TF_Object_Dispenser",
-	"#TF_Object_Tele_Entrance",
-	"#TF_Object_Tele_Exit",
+	"#TF_Object_Tele",
 	"#TF_Object_Sentry",
 	"#TF_object_sapper"			
 };
@@ -49,10 +48,11 @@ public:
 	virtual bool IsVisible( void );
 
 	void PlayRivalrySounds( int iKillerIndex, int iVictimIndex, int iType  );
+	virtual Color GetInfoTextColor( int iDeathNoticeMsg );
 
 protected:	
 	virtual void OnGameEvent( IGameEvent *event, int iDeathNoticeMsg );
-	virtual Color GetTeamColor( int iTeamNumber, bool bLocalPlayerInvolved /* = false */ );
+	virtual Color GetTeamColor( int iTeamNumber, bool bLocalPlayerInvolved = false );
 
 private:
 	void AddAdditionalMsg( int iKillerID, int iVictimID, const char *pMsgKey );
@@ -61,7 +61,7 @@ private:
 
 	CPanelAnimationVar( Color, m_clrBlueText, "TeamBlue", "153 204 255 255" );
 	CPanelAnimationVar( Color, m_clrRedText, "TeamRed", "255 64 64 255" );
-
+	CPanelAnimationVar( Color, m_clrLocalPlayer, "LocalPlayerColor", "65 65 65 255" );
 };
 
 DECLARE_HUDELEMENT( CTFHudDeathNotice );
@@ -111,6 +111,14 @@ void CTFHudDeathNotice::PlayRivalrySounds( int iKillerIndex, int iVictimIndex, i
 	C_BaseEntity::EmitSound( filter, SOUND_FROM_LOCAL_PLAYER, pszSoundName );
 }
 
+Color CTFHudDeathNotice::GetInfoTextColor( int iDeathNoticeMsg )
+{
+	if ( m_DeathNotices[ iDeathNoticeMsg ].bLocalPlayerInvolved )
+		return m_clrLocalPlayer;
+
+	return COLOR_WHITE;
+}
+
 //-----------------------------------------------------------------------------
 // Purpose: Called when a game event happens and a death notice is about to be 
 //			displayed.  This method can examine the event and death notice and
@@ -146,23 +154,24 @@ void CTFHudDeathNotice::OnGameEvent(IGameEvent *event, int iDeathNoticeMsg)
 			// mentioning that
 			int iKillerID = engine->GetPlayerForUserID( event->GetInt( "attacker" ) );
 			int iVictimID = engine->GetPlayerForUserID( event->GetInt( "userid" ) );
-		
-			if ( event->GetInt( "dominated" ) > 0 )
+			int nDeathFlags = event->GetInt( "death_flags" );
+
+			if ( nDeathFlags & TF_DEATH_DOMINATION )
 			{
 				AddAdditionalMsg( iKillerID, iVictimID, "#Msg_Dominating" );
 				PlayRivalrySounds( iKillerID, iVictimID, TF_DEATH_DOMINATION );
 			}
-			if ( event->GetInt( "assister_dominated" ) > 0 && ( iAssisterID > 0 ) )
+			if ( ( nDeathFlags & TF_DEATH_ASSISTER_DOMINATION ) && ( iAssisterID > 0 ) )
 			{
 				AddAdditionalMsg( iAssisterID, iVictimID, "#Msg_Dominating" );
 				PlayRivalrySounds( iAssisterID, iVictimID, TF_DEATH_DOMINATION );
 			}
-			if ( event->GetInt( "revenge" ) > 0 ) 
+			if ( nDeathFlags & TF_DEATH_REVENGE )
 			{
 				AddAdditionalMsg( iKillerID, iVictimID, "#Msg_Revenge" );
 				PlayRivalrySounds( iKillerID, iVictimID, TF_DEATH_REVENGE );
 			}
-			if ( event->GetInt( "assister_revenge" ) > 0 && ( iAssisterID > 0 ) ) 
+			if ( ( nDeathFlags & TF_DEATH_ASSISTER_REVENGE ) && ( iAssisterID > 0 ) )
 			{
 				AddAdditionalMsg( iAssisterID, iVictimID, "#Msg_Revenge" );
 				PlayRivalrySounds( iAssisterID, iVictimID, TF_DEATH_REVENGE );
@@ -189,17 +198,17 @@ void CTFHudDeathNotice::OnGameEvent(IGameEvent *event, int iDeathNoticeMsg)
 				}
 
 				// compose the string
-				if (m_DeathNotices[iDeathNoticeMsg].Victim.szName[0])
+				if ( m_DeathNotices[iDeathNoticeMsg].Victim.szName[0] )
 				{
 					char szVictimBuf[MAX_PLAYER_NAME_LENGTH*2];
-					Q_snprintf(szVictimBuf, ARRAYSIZE(szVictimBuf), "%s (%s)", szLocalizedObjectName, m_DeathNotices[iDeathNoticeMsg].Victim.szName);
-					Q_strncpy(m_DeathNotices[iDeathNoticeMsg].Victim.szName, szVictimBuf, ARRAYSIZE(m_DeathNotices[iDeathNoticeMsg].Victim.szName));
+					Q_snprintf( szVictimBuf, ARRAYSIZE( szVictimBuf), "%s (%s)", szLocalizedObjectName, m_DeathNotices[iDeathNoticeMsg].Victim.szName );
+					Q_strncpy( m_DeathNotices[iDeathNoticeMsg].Victim.szName, szVictimBuf, ARRAYSIZE( m_DeathNotices[iDeathNoticeMsg].Victim.szName ) );
 				}
 				else
 				{
-					Q_strncpy(m_DeathNotices[iDeathNoticeMsg].Victim.szName, szLocalizedObjectName, ARRAYSIZE(m_DeathNotices[iDeathNoticeMsg].Victim.szName));
+					Q_strncpy( m_DeathNotices[iDeathNoticeMsg].Victim.szName, szLocalizedObjectName, ARRAYSIZE( m_DeathNotices[iDeathNoticeMsg].Victim.szName ) );
 				}
-				
+
 			}
 			else
 			{
@@ -208,7 +217,7 @@ void CTFHudDeathNotice::OnGameEvent(IGameEvent *event, int iDeathNoticeMsg)
 		}
 
 		const wchar_t *pMsg = NULL;
-		switch ( iCustomDamage )
+		switch (iCustomDamage)
 		{
 		case TF_DMG_CUSTOM_BACKSTAB:
 			Q_strncpy(m_DeathNotices[iDeathNoticeMsg].szIcon, "d_backstab", ARRAYSIZE(m_DeathNotices[iDeathNoticeMsg].szIcon));
@@ -244,7 +253,7 @@ void CTFHudDeathNotice::OnGameEvent(IGameEvent *event, int iDeathNoticeMsg)
 
 		const char *szCaptureIcons[] = { "d_redcapture", "d_bluecapture" };
 		const char *szDefenseIcons[] = { "d_reddefend", "d_bluedefend" };
-		
+
 		int iTeam = m_DeathNotices[iDeathNoticeMsg].Killer.iTeam;
 		Assert( iTeam >= FIRST_GAME_TEAM );
 		Assert( iTeam < FIRST_GAME_TEAM + TF_TEAM_COUNT );
@@ -266,6 +275,10 @@ void CTFHudDeathNotice::AddAdditionalMsg( int iKillerID, int iVictimID, const ch
 	DeathNoticeItem &msg2 = m_DeathNotices[AddDeathNoticeItem()];
 	Q_strncpy( msg2.Killer.szName, g_PR->GetPlayerName( iKillerID ), ARRAYSIZE( msg2.Killer.szName ) );
 	Q_strncpy( msg2.Victim.szName, g_PR->GetPlayerName( iVictimID ), ARRAYSIZE( msg2.Victim.szName ) );
+
+	msg2.Killer.iTeam = g_PR->GetTeam( iKillerID );
+	msg2.Victim.iTeam = g_PR->GetTeam( iVictimID );
+
 	const wchar_t *wzMsg =  g_pVGuiLocalize->Find( pMsgKey );
 	if ( wzMsg )
 	{
@@ -288,16 +301,12 @@ Color CTFHudDeathNotice::GetTeamColor( int iTeamNumber, bool bLocalPlayerInvolve
 	{
 	case TF_TEAM_BLUE:
 		return m_clrBlueText;
-		break;
 	case TF_TEAM_RED:
 		return m_clrRedText;
-		break;
 	case TEAM_UNASSIGNED:		
-		return Color( 255, 255, 255, 255 );
-		break;
+		return bLocalPlayerInvolved ? m_clrLocalPlayer : Color(255, 255, 255, 255);
 	default:
 		AssertOnce( false );	// invalid team
-		return Color( 255, 255, 255, 255 );
-		break;
+		return COLOR_WHITE;
 	}
 }

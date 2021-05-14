@@ -69,6 +69,7 @@ public:
 	virtual void GetToolRecordingState( KeyValues *msg );
 
 	CTFWeaponBase *GetActiveTFWeapon( void ) const;
+	bool		 IsActiveTFWeapon(int iWeaponID);
 
 	virtual void Simulate( void );
 	virtual void FireEvent( const Vector& origin, const QAngle& angles, int event, const char *options );
@@ -127,8 +128,8 @@ public:
 
 	int	GetObjectCount( void );
 	C_BaseObject *GetObject( int index );
-	C_BaseObject *GetObjectOfType( int iObjectType );
-	int GetNumObjects( int iObjectType );
+	C_BaseObject *GetObjectOfType( int iObjectType, int iObjectMode );
+	int GetNumObjects( int iObjectType, int iObjectMode );
 
 	virtual bool ShouldCollide( int collisionGroup, int contentsMask ) const;
 
@@ -155,8 +156,7 @@ public:
 
 	void			StartBurningSound( void );
 	void			StopBurningSound( void );
-	void			OnAddTeleported( void );
-	void			OnRemoveTeleported( void );
+	void			UpdateRecentlyTeleportedEffect( void );
 
 	bool			CanShowClassMenu( void );
 
@@ -204,6 +204,8 @@ public:
 	bool	DoClassSpecialSkill( void );
 	bool	CanGoInvisible( void );
 
+	bool	CanPickupBuilding( C_BaseObject *pObject );
+
 public:
 	// Ragdolls.
 	virtual C_BaseAnimating *BecomeRagdollOnClient();
@@ -212,7 +214,7 @@ public:
 	Vector m_vecRagdollVelocity;
 
 	// Objects
-	int CanBuild( int iObjectType );
+	int CanBuild( int iObjectType, int iObjectMode );
 	CUtlVector< CHandle<C_BaseObject> > m_aObjects;
 
 	virtual CStudioHdr *OnNewModel( void );

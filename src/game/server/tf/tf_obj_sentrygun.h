@@ -25,6 +25,9 @@ enum
 	SENTRY_LEVEL_3,
 };
 
+#define SF_OBJ_UPGRADABLE			0x0004
+#define SF_SENTRY_INFINITE_AMMO		0x0008
+
 // ------------------------------------------------------------------------ //
 // Sentrygun object that's built by the player
 // ------------------------------------------------------------------------ //
@@ -51,25 +54,28 @@ public:
 	virtual void	StartPlacement( CTFPlayer *pPlayer );
 
 	// Engineer hit me with a wrench
-	virtual bool	OnWrenchHit( CTFPlayer *pPlayer );
+	virtual bool	OnWrenchHit( CTFPlayer *pPlayer, CTFWrench *pWrench, Vector vecHitPos );
+	// If the players hit us with a wrench, should we upgrade
+	virtual bool	CanBeUpgraded( CTFPlayer *pPlayer );
 
 	virtual void	OnStartDisabled( void );
 	virtual void	OnEndDisabled( void );
 
 	virtual int		GetTracerAttachment( void );
 
-	void			UpgradeThink( void );
 	virtual bool	IsUpgrading( void ) const;
 
-	int				GetUpgradeLevel( void ) { return m_iUpgradeLevel; }
+	virtual int		GetBaseHealth( void );
+	virtual int		GetMaxUpgradeLevel( void );
+	virtual char	*GetPlacementModel( void );
+
+	virtual void	MakeCarriedObject( CTFPlayer *pPlayer );
 
 private:
 
 	// Main think
 	void SentryThink( void );
 
-	// If the players hit us with a wrench, should we upgrade
-	bool CanBeUpgraded( CTFPlayer *pPlayer );
 	void StartUpgrading( void );
 	void FinishUpgrading( void );
 
@@ -97,9 +103,6 @@ private:
 
 	float m_flNextAttack;
 
-	// Upgrade Level ( 1, 2, 3 )
-	CNetworkVar( int, m_iUpgradeLevel );
-
 	// Rotation
 	int m_iRightBound;
 	int m_iLeftBound;
@@ -110,12 +113,6 @@ private:
 	QAngle m_vecGoalAngles;
 
 	float m_flTurnRate;
-
-	// Time when the upgrade animation will complete
-	float m_flUpgradeCompleteTime;
-
-	CNetworkVar( int, m_iUpgradeMetal );
-	CNetworkVar( int, m_iUpgradeMetalRequired );
 
 	// Ammo
 	CNetworkVar( int, m_iAmmoShells );

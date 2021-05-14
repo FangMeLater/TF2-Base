@@ -407,3 +407,25 @@ CTFTeam *GetGlobalTFTeam( int iIndex )
 
 	return ( dynamic_cast< CTFTeam* >( g_Teams[iIndex] ) );
 }
+
+
+void CTFTeam::GetOpposingTFTeamList(CUtlVector<CTFTeam *> *pTeamList)
+{
+	int iTeam = GetTeamNumber();
+	switch (iTeam)
+	{
+		case TF_TEAM_RED:
+			pTeamList->AddToTail(TFTeamMgr()->GetTeam(TF_TEAM_BLUE));
+			break;
+
+		case TF_TEAM_BLUE:
+			pTeamList->AddToTail(TFTeamMgr()->GetTeam(TF_TEAM_RED));
+			break;
+
+		default:
+			// Makes unassigned sentries shoot everyone, hehe.
+			pTeamList->AddToTail(TFTeamMgr()->GetTeam(TF_TEAM_RED));
+			pTeamList->AddToTail(TFTeamMgr()->GetTeam(TF_TEAM_BLUE));
+			break;
+	}
+}

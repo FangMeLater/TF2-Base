@@ -1218,7 +1218,7 @@ void C_TFPlayer::UpdateClientSideAnimation()
 	// Update the animation data. It does the local check here so this works when using
 	// a third-person camera (and we don't have valid player angles).
 	if ( this == C_TFPlayer::GetLocalTFPlayer() )
-		m_PlayerAnimState->Update( EyeAngles()[YAW], m_angEyeAngles[PITCH] );
+		m_PlayerAnimState->Update( EyeAngles()[YAW], EyeAngles()[PITCH] );
 	else
 		m_PlayerAnimState->Update( m_angEyeAngles[YAW], m_angEyeAngles[PITCH] );
 
@@ -1467,6 +1467,7 @@ void C_TFPlayer::OnDataChanged( DataUpdateType_t updateType )
 		if ( event )
 		{
 			event->SetInt( "building_type", -1 );
+			event->SetInt( "object_mode", OBJECT_MODE_NONE );
 			gameeventmanager->FireEventClientSide( event );
 		}
 	
@@ -1546,40 +1547,45 @@ void C_TFPlayer::StopBurningSound( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void C_TFPlayer::OnAddTeleported( void )
+void C_TFPlayer::UpdateRecentlyTeleportedEffect( void )
 {
-	if ( !m_pTeleporterEffect )
+	if ( m_Shared.ShouldShowRecentlyTeleported() )
 	{
-		char *pEffect = NULL;
-
-		switch( GetTeamNumber() )
+		if ( !m_pTeleporterEffect )
 		{
-		case TF_TEAM_BLUE:
-			pEffect = "player_recent_teleport_blue";
-			break;
-		case TF_TEAM_RED:
-			pEffect = "player_recent_teleport_red";
-			break;
-		default:
-			break;
-		}
+			int iTeam = GetTeamNumber();
+			if ( m_Shared.InCond( TF_COND_DISGUISED ) )
+			{
+				iTeam = m_Shared.GetDisguiseTeam();
+			}
 
-		if ( pEffect )
-		{
-			m_pTeleporterEffect = ParticleProp()->Create( pEffect, PATTACH_ABSORIGIN_FOLLOW );
+			char *pszEffect = NULL;
+
+			switch( iTeam )
+			{
+			case TF_TEAM_BLUE:
+				pszEffect = "player_recent_teleport_blue";
+				break;
+			case TF_TEAM_RED:
+				pszEffect = "player_recent_teleport_red";
+				break;
+			default:
+				break;
+			}
+
+			if ( pszEffect )
+			{
+				m_pTeleporterEffect = ParticleProp()->Create( pszEffect, PATTACH_ABSORIGIN_FOLLOW );
+			}
 		}
 	}
-}
-
-//-----------------------------------------------------------------------------
-// Purpose: 
-//-----------------------------------------------------------------------------
-void C_TFPlayer::OnRemoveTeleported( void )
-{
-	if ( m_pTeleporterEffect )
+	else
 	{
-		ParticleProp()->StopEmission( m_pTeleporterEffect );
-		m_pTeleporterEffect = NULL;
+		if ( m_pTeleporterEffect )
+		{
+			ParticleProp()->StopEmission( m_pTeleporterEffect );
+			m_pTeleporterEffect = NULL;
+		}
 	}
 }
 
@@ -2886,7 +2892,7 @@ C_BaseObject *C_TFPlayer::GetObject( int index )
 //-----------------------------------------------------------------------------
 // Purpose: Get a specific buildable that this player owns
 //-----------------------------------------------------------------------------
-C_BaseObject *C_TFPlayer::GetObjectOfType( int iObjectType )
+C_BaseObject *C_TFPlayer::GetObjectOfType( int iObjectType, int iObjectMode )
 {
 	int iCount = m_aObjects.Count();
 
@@ -2900,7 +2906,7 @@ C_BaseObject *C_TFPlayer::GetObjectOfType( int iObjectType )
 		if ( pObj->IsDormant() || pObj->IsMarkedForDeletion() )
 			continue;
 
-		if ( pObj->GetType() == iObjectType )
+		if ( pObj->GetType() == iObjectType && pObj->GetObjectMode() == iObjectMode )
 		{
 			return pObj;
 		}

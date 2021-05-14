@@ -46,7 +46,6 @@ void RecvProxyArrayLength_HealingArray( void *pStruct, int objectID, int current
 
 IMPLEMENT_CLIENTCLASS_DT(C_ObjectDispenser, DT_ObjectDispenser, CObjectDispenser)
 	RecvPropInt( RECVINFO( m_iAmmoMetal ) ),
-
 	RecvPropArray2( 
 		RecvProxyArrayLength_HealingArray,
 		RecvPropInt( "healing_array_element", 0, SIZEOF_IGNORE, 0, RecvProxy_HealingList ), 
@@ -110,6 +109,21 @@ void C_ObjectDispenser::OnDataChanged( DataUpdateType_t updateType )
 		UpdateEffects();
 		m_bUpdateHealingTargets = false;
 	}
+
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_ObjectDispenser::SetDormant( bool bDormant )
+{
+	if ( !IsDormant() && bDormant )
+	{
+		m_bPlayingSound = false;
+		StopSound( "Building_Dispenser.Heal" );
+	}
+
+	BaseClass::SetDormant( bDormant );
 }
 
 void C_ObjectDispenser::UpdateEffects( void )
@@ -172,7 +186,13 @@ void C_ObjectDispenser::UpdateEffects( void )
 				pszEffectName = "dispenser_heal_blue";
 			}
 
-			CNewParticleEffect *pEffect = ParticleProp()->Create( pszEffectName, PATTACH_POINT_FOLLOW, "heal_origin" );
+			CNewParticleEffect *pEffect = NULL;
+
+			if ( GetObjectFlags() & OF_IS_CART_OBJECT )
+				pEffect = ParticleProp()->Create( pszEffectName, PATTACH_ABSORIGIN_FOLLOW );
+			else
+				pEffect = ParticleProp()->Create( pszEffectName, PATTACH_POINT_FOLLOW, "heal_origin" );
+
 			ParticleProp()->AddControlPoint( pEffect, 1, pTarget, PATTACH_ABSORIGIN_FOLLOW, NULL, Vector(0,0,50) );
 
 			int iIndex = m_hHealingTargetEffects.AddToTail();
@@ -206,9 +226,12 @@ void C_ObjectDispenser::UpdateDamageEffects( BuildingDamageLevel_t damageLevel )
 {
 	if ( m_pDamageEffects )
 	{
-		m_pDamageEffects->StopEmission( false, false );
+		ParticleProp()->StopEmission( m_pDamageEffects );
 		m_pDamageEffects = NULL;
 	}
+
+	if ( IsPlacing() )
+		return;
 
 	const char *pszEffect = "";
 
@@ -244,6 +267,7 @@ void C_ObjectDispenser::UpdateDamageEffects( BuildingDamageLevel_t damageLevel )
 DECLARE_VGUI_SCREEN_FACTORY( CDispenserControlPanel, "screen_obj_dispenser_blue" );
 DECLARE_VGUI_SCREEN_FACTORY( CDispenserControlPanel_Red, "screen_obj_dispenser_red" );
 
+
 //-----------------------------------------------------------------------------
 // Constructor: 
 //-----------------------------------------------------------------------------
@@ -267,3 +291,7 @@ void CDispenserControlPanel::OnTickActive( C_BaseObject *pObj, C_TFPlayer *pLoca
 
 	m_pAmmoProgress->SetProgress( flMetal );
 }
+
+
+IMPLEMENT_CLIENTCLASS_DT( C_ObjectCartDispenser, DT_ObjectCartDispenser, CObjectCartDispenser )
+END_RECV_TABLE()
