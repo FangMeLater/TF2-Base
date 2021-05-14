@@ -187,11 +187,11 @@ void CObjectTeleporter::TeleporterSend( CTFPlayer *pPlayer )
 	{
 	case TF_TEAM_RED:
 		TE_TFParticleEffect( filter, 0.0, "teleported_red", origin, vec3_angle );
-		TE_TFParticleEffect( filter, 0.0, "player_sparkles_red", origin, vec3_angle, pPlayer, PATTACH_POINT );
+		TE_TFParticleEffect( filter, 0.0, "player_sparkles_red", PATTACH_ABSORIGIN, pPlayer );
 		break;
 	case TF_TEAM_BLUE:
 		TE_TFParticleEffect( filter, 0.0, "teleported_blue", origin, vec3_angle );
-		TE_TFParticleEffect( filter, 0.0, "player_sparkles_blue", origin, vec3_angle, pPlayer, PATTACH_POINT );
+		TE_TFParticleEffect( filter, 0.0, "player_sparkles_blue", PATTACH_ABSORIGIN, pPlayer );
 		break;
 	default:
 		break;
