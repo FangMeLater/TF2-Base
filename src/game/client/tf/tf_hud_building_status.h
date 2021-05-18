@@ -184,6 +184,8 @@ private:
 
 	CIconPanel *m_pSentryIcons[3];
 
+	CTFLabel *m_pRocketsLabel;
+	CTFLabel *m_pUpgradeLabel;
 	vgui::ImagePanel *m_pRocketsIcon;
 	CIconPanel *m_pUpgradeIcon;
 	CTFLabel *m_pKillsLabel;
@@ -223,6 +225,7 @@ private:
 	vgui::ContinuousProgressBar *m_pAmmoProgress;
 	vgui::ContinuousProgressBar *m_pUpgradeProgress;
 
+	CTFLabel *m_pUpgradeLabel;
 	CIconPanel *m_pUpgradeIcon;
 
 };
@@ -246,6 +249,7 @@ private:
 	vgui::EditablePanel *m_pFullyChargedPanel;
 	vgui::ContinuousProgressBar *m_pUpgradeProgress;
 
+	CTFLabel *m_pUpgradeLabel;
 	CIconPanel *m_pUpgradeIcon;
 
 	// children of m_pChargingPanel
@@ -269,6 +273,7 @@ public:
 
 private:
 	vgui::ContinuousProgressBar *m_pUpgradeProgress;
+	CTFLabel *m_pUpgradeLabel;
 	CIconPanel *m_pUpgradeIcon;
 };
 

@@ -626,6 +626,8 @@ CBuildingStatusItem_SentryGun::CBuildingStatusItem_SentryGun( Panel *parent ) :
 	m_pRocketsProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Rockets" );
 	m_pUpgradeProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Upgrade" );
 
+	m_pRocketsLabel = new CTFLabel( GetRunningPanel(), "RocketsLabel", "" );
+	m_pUpgradeLabel = new CTFLabel( GetRunningPanel(), "UpgradeLabel", "" );
 	m_pRocketsIcon = new vgui::ImagePanel( GetRunningPanel(), "RocketIcon" );
 	m_pUpgradeIcon = new CIconPanel( GetRunningPanel(), "UpgradeIcon" );
 
@@ -716,10 +718,12 @@ void CBuildingStatusItem_SentryGun::PerformLayout( void )
 	m_pUpgradeProgress->SetProgress( flUpgrade );
 
 	// upgrade label only in 1 or 2
+	m_pUpgradeLabel->SetVisible( iUpgradeLevel < 3 );
 	m_pUpgradeIcon->SetVisible( iUpgradeLevel < 3 );
 	m_pUpgradeProgress->SetVisible( iUpgradeLevel < 3 );
 
 	// rockets label only in 3
+	m_pRocketsLabel->SetVisible( iUpgradeLevel == 3 );
 	m_pRocketsIcon->SetVisible( iUpgradeLevel == 3 );
 	m_pRocketsProgress->SetVisible( iUpgradeLevel == 3 );
 }
@@ -779,6 +783,7 @@ CBuildingStatusItem_Dispenser::CBuildingStatusItem_Dispenser( Panel *parent ) :
 {
 	m_pAmmoProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Ammo" );
 	m_pUpgradeProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Upgrade" );
+	m_pUpgradeLabel = new CTFLabel( GetRunningPanel(), "UpgradeLabel", "" );
 	m_pUpgradeIcon = new CIconPanel( GetRunningPanel(), "UpgradeIcon" );
 }
 
@@ -810,6 +815,7 @@ void CBuildingStatusItem_Dispenser::PerformLayout( void )
 	m_pUpgradeProgress->SetProgress(flUpgrade);
 
 	// upgrade label only in 1 or 2
+	m_pUpgradeLabel->SetVisible( iUpgradeLevel < 3 && IsUpgradable() );
 	m_pUpgradeIcon->SetVisible( iUpgradeLevel < 3 && IsUpgradable() );
 	m_pUpgradeProgress->SetVisible( iUpgradeLevel < 3 && IsUpgradable() );
 
@@ -832,6 +838,7 @@ CBuildingStatusItem( parent, "resource/UI/hud_obj_tele_entrance.res", OBJ_TELEPO
 
 	m_pUpgradeProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Upgrade" );
 
+	m_pUpgradeLabel = new CTFLabel( GetRunningPanel(), "UpgradeLabel", "" );
 	m_pUpgradeIcon = new CIconPanel( GetRunningPanel(), "UpgradeIcon" );
 
 	m_iTimesUsed = -1;	// force first update of 0
@@ -867,6 +874,7 @@ void CBuildingStatusItem_TeleporterEntrance::OnTick( void )
 		m_pUpgradeProgress->SetProgress( flUpgrade );
 
 		// upgrade label only in 1 or 2
+		m_pUpgradeLabel->SetVisible( iUpgradeLevel < 3 && IsUpgradable() );
 		m_pUpgradeIcon->SetVisible( iUpgradeLevel < 3 && IsUpgradable() );
 		m_pUpgradeProgress->SetVisible( iUpgradeLevel < 3 && IsUpgradable() );
 	}
@@ -904,6 +912,7 @@ CBuildingStatusItem_TeleporterExit::CBuildingStatusItem_TeleporterExit( Panel *p
 	CBuildingStatusItem( parent, "resource/UI/hud_obj_tele_exit.res", OBJ_TELEPORTER, TELEPORTER_TYPE_EXIT )
 {
 	m_pUpgradeProgress = new vgui::ContinuousProgressBar( GetRunningPanel(), "Upgrade" );
+	m_pUpgradeLabel = new CTFLabel( GetRunningPanel(), "UpgradeLabel", "" );
 	m_pUpgradeIcon = new CIconPanel( GetRunningPanel(), "UpgradeIcon" );
 }
 
@@ -925,7 +934,7 @@ void CBuildingStatusItem_TeleporterExit::PerformLayout(void)
 	// upgrade progress
 	int iMetal = pTeleporter->GetUpgradeMetal();
 	int iMetalRequired = pTeleporter->GetUpgradeMetalRequired();
-	float flUpgrade = (float)iMetal / (float)iMetalRequired;;
+	float flUpgrade = (float)iMetal / (float)iMetalRequired;
 
 	if ( m_pUpgradeProgress )
 	{ 
@@ -934,6 +943,7 @@ void CBuildingStatusItem_TeleporterExit::PerformLayout(void)
 	}
 		
 	if ( m_pUpgradeIcon )
+		m_pUpgradeLabel->SetVisible( pTeleporter->GetUpgradeLevel() < 3 && IsUpgradable() );
 		m_pUpgradeIcon->SetVisible( pTeleporter->GetUpgradeLevel() < 3 && IsUpgradable() );
 }
 
