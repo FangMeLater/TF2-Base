@@ -329,6 +329,9 @@ public:
 
 	bool ShouldAnnouceAchievement( void );
 
+	virtual void		PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force );
+	virtual bool		IsDeflectable( void ) { return true; }
+
 public:
 
 	CTFPlayerShared m_Shared;
@@ -400,8 +403,6 @@ public:
 
 	CTFWeaponBase		*Weapon_OwnsThisID( int iWeaponID );
 	CTFWeaponBase		*Weapon_GetWeaponByType( int iType );
-
-	virtual void		PlayStepSound( Vector &vecOrigin, surfacedata_t *psurface, float fvol, bool force );
 
 private:
 

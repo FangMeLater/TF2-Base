@@ -48,6 +48,9 @@ public:
 	void	Precache( void );
 	void	Spawn( void );
 
+	CNetworkVar( int, m_iDeflected );
+	CNetworkHandle( CBaseEntity, m_hLauncher );
+
 protected:
 
 	// Networked.
@@ -62,10 +65,13 @@ protected:
 public:
 
 	virtual int		DrawModel( int flags );
+	virtual void	OnPreDataChanged( DataUpdateType_t updateType );
 	virtual void	PostDataUpdate( DataUpdateType_t type );
 
-private:
+protected:
+	int		m_iOldTeamNum;
 
+private:
 	float	 m_flSpawnTime;
 
 //=============================================================================
@@ -98,6 +104,9 @@ public:
 	virtual CBaseEntity		*GetEnemy( void )			{ return m_hEnemy; }
 
 	void			SetHomingTarget( CBaseEntity *pHomingTarget );
+
+	virtual void	IncremenentDeflected( void );
+	virtual void	SetLauncher( CBaseEntity *pLauncher );
 
 protected:
 

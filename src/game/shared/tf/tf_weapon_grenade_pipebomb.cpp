@@ -15,6 +15,7 @@
 #ifdef CLIENT_DLL
 #include "c_tf_player.h"
 #include "IEffects.h"
+#include "c_team.h"
 // Server specific.
 #else
 #include "tf_player.h"
@@ -160,6 +161,43 @@ const char *CTFGrenadePipebombProjectile::GetTrailParticleName( void )
 
 //-----------------------------------------------------------------------------
 // Purpose: 
+//-----------------------------------------------------------------------------
+void CTFGrenadePipebombProjectile::CreateTrails( void )
+{
+	ParticleProp()->Create( GetTrailParticleName(), PATTACH_ABSORIGIN_FOLLOW );
+
+	if ( m_bCritical )
+	{
+		switch ( GetTeamNumber() )
+		{
+		case TF_TEAM_BLUE:
+		if ( m_iType == TF_GL_MODE_REMOTE_DETONATE )
+			{
+				ParticleProp()->Create( "critical_grenade_blue", PATTACH_ABSORIGIN_FOLLOW );
+			}
+			else
+			{
+				ParticleProp()->Create( "critical_pipe_blue", PATTACH_ABSORIGIN_FOLLOW );
+			}
+			break;
+		case TF_TEAM_RED:
+			if ( m_iType == TF_GL_MODE_REMOTE_DETONATE )
+			{
+				ParticleProp()->Create( "critical_grenade_red", PATTACH_ABSORIGIN_FOLLOW );
+			}
+			else
+			{
+				ParticleProp()->Create( "critical_pipe_red", PATTACH_ABSORIGIN_FOLLOW );
+			}
+			break;
+		default:
+			break;
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
 // Input  : updateType - 
 //-----------------------------------------------------------------------------
 void CTFGrenadePipebombProjectile::OnDataChanged(DataUpdateType_t updateType)
@@ -169,7 +207,7 @@ void CTFGrenadePipebombProjectile::OnDataChanged(DataUpdateType_t updateType)
 	if ( updateType == DATA_UPDATE_CREATED )
 	{
 		m_flCreationTime = gpGlobals->curtime;
-		ParticleProp()->Create( GetTrailParticleName(), PATTACH_ABSORIGIN_FOLLOW );
+
 		m_bPulsed = false;
 
 		CTFPipebombLauncher *pLauncher = dynamic_cast<CTFPipebombLauncher*>( m_hLauncher.Get() );
@@ -179,41 +217,17 @@ void CTFGrenadePipebombProjectile::OnDataChanged(DataUpdateType_t updateType)
 			pLauncher->AddPipeBomb( this );
 		}
 
-		if ( m_bCritical )
-		{
-			switch( GetTeamNumber() )
-			{
-			case TF_TEAM_BLUE:
-
-				if ( m_iType == TF_GL_MODE_REMOTE_DETONATE )
-				{
-					ParticleProp()->Create( "critical_grenade_blue", PATTACH_ABSORIGIN_FOLLOW );
-				}
-				else
-				{
-					ParticleProp()->Create( "critical_pipe_blue", PATTACH_ABSORIGIN_FOLLOW );
-				}
-				break;
-			case TF_TEAM_RED:
-
-				if ( m_iType == TF_GL_MODE_REMOTE_DETONATE )
-				{
-					ParticleProp()->Create( "critical_grenade_red", PATTACH_ABSORIGIN_FOLLOW );
-				}
-				else
-				{
-					ParticleProp()->Create( "critical_pipe_red", PATTACH_ABSORIGIN_FOLLOW );
-				}
-				break;
-			default:
-				break;
-			}
-		}
-
+		CreateTrails();
 	}
 	else if ( m_bTouched )
 	{
 		//ParticleProp()->StopEmission();
+	}
+
+	if ( m_iOldTeamNum && m_iOldTeamNum != m_iTeamNum )
+	{
+		ParticleProp()->StopEmission();
+		CreateTrails();
 	}
 }
 extern ConVar tf_grenadelauncher_livetime;
@@ -593,6 +607,29 @@ int CTFGrenadePipebombProjectile::OnTakeDamage( const CTakeDamageInfo &info )
 	}
 
 	return 0;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFGrenadePipebombProjectile::Deflected( CBaseEntity *pDeflectedBy, Vector &vecDir )
+{
+	Vector vecPushSrc = pDeflectedBy->WorldSpaceCenter();
+	Vector vecPushDir = GetAbsOrigin() - vecPushSrc;
+	VectorNormalize( vecPushDir );
+
+	if ( GetType() == TF_GL_MODE_REMOTE_DETONATE )
+	{
+		// This is kind of lame.
+		CTakeDamageInfo info( pDeflectedBy, pDeflectedBy, 100, DMG_BLAST );
+		CalculateExplosiveDamageForce( &info, vecPushDir, vecPushSrc );
+		TakeDamage( info );
+	}
+	else
+	{
+		BaseClass::Deflected( pDeflectedBy, vecDir );
+	}
+	// TODO: Live TF2 adds white trail to reflected pipes and stickies. We need one as well.
 }
 
 #endif

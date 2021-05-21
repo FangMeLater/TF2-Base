@@ -32,6 +32,9 @@ RecvPropVector( RECVINFO( m_vInitialVelocity ) ),
 RecvPropVector( RECVINFO_NAME( m_vecNetworkOrigin, m_vecOrigin ) ),
 RecvPropQAngles( RECVINFO_NAME( m_angNetworkAngles, m_angRotation ) ),
 
+RecvPropInt( RECVINFO( m_iDeflected ) ),
+RecvPropEHandle( RECVINFO( m_hLauncher ) ),
+
 // Server specific.
 #else
 SendPropVector( SENDINFO( m_vInitialVelocity ), 12 /*nbits*/, 0 /*flags*/, -3000 /*low value*/, 3000 /*high value*/	),
@@ -41,6 +44,9 @@ SendPropExclude( "DT_BaseEntity", "m_angRotation" ),
 
 SendPropVector	(SENDINFO(m_vecOrigin), -1,  SPROP_COORD_MP_INTEGRAL|SPROP_CHANGES_OFTEN, 0.0f, HIGH_DEFAULT, SendProxy_Origin ),
 SendPropQAngles	(SENDINFO(m_angRotation), 6, SPROP_CHANGES_OFTEN, SendProxy_Angles ),
+
+SendPropInt( SENDINFO( m_iDeflected ), 4, SPROP_UNSIGNED ),
+SendPropEHandle( SENDINFO( m_hLauncher ) ),
 
 #endif
 END_NETWORK_TABLE()
@@ -66,11 +72,14 @@ ConVar tf_rocket_show_radius( "tf_rocket_show_radius", "0", FCVAR_REPLICATED | F
 CTFBaseRocket::CTFBaseRocket()
 {
 	m_vInitialVelocity.Init();
+	m_iDeflected = 0;
+	m_hLauncher = NULL;
 
 // Client specific.
 #ifdef CLIENT_DLL
 
 	m_flSpawnTime = 0.0f;
+	m_iOldTeamNum = TEAM_UNASSIGNED;
 		
 // Server specific.
 #else
@@ -145,6 +154,16 @@ void CTFBaseRocket::Spawn( void )
 // Client specific functions.
 //
 #ifdef CLIENT_DLL
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFBaseRocket::OnPreDataChanged( DataUpdateType_t updateType )
+{
+	BaseClass::OnPreDataChanged( updateType );
+
+	m_iOldTeamNum = m_iTeamNum;
+}
 
 //-----------------------------------------------------------------------------
 // Purpose: 
@@ -313,7 +332,7 @@ void CTFBaseRocket::Explode( trace_t *pTrace, CBaseEntity *pOther )
 
 	float flRadius = GetRadius();
 	CTFRadiusDamageInfo radiusInfo;
-	radiusInfo.info.Set( this, pAttacker, vec3_origin, vecOrigin, GetDamage(), GetDamageType() );
+	radiusInfo.info.Set( this, pAttacker, m_hLauncher, vec3_origin, vecOrigin, GetDamage(), GetDamageType() );
 	radiusInfo.m_vecSrc = vecOrigin;
 	radiusInfo.m_flRadius = flRadius;
 	radiusInfo.m_flSelfDamageRadius = 121.0f; // Original rocket radius?
@@ -386,6 +405,22 @@ void CTFBaseRocket::DrawRadius( float flRadius )
 
 		lastEdge = edge;
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Increment deflects counter
+//-----------------------------------------------------------------------------
+void CTFBaseRocket::IncremenentDeflected( void )
+{
+	m_iDeflected++;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CTFBaseRocket::SetLauncher( CBaseEntity *pLauncher )
+{ 
+	m_hLauncher = pLauncher;
 }
 
 void CTFBaseRocket::FlyThink( void )

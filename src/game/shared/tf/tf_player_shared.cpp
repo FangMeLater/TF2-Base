@@ -736,7 +736,7 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		else if ( ( gpGlobals->curtime >= m_flFlameBurnTime ) && ( TF_CLASS_PYRO != m_pOuter->GetPlayerClass()->GetClassIndex() ) )
 		{
 			// Burn the player (if not pyro, who does not take persistent burning damage)
-			CTakeDamageInfo info( m_hBurnAttacker, m_hBurnAttacker, TF_BURNING_DMG, DMG_BURN | DMG_PREVENT_PHYSICS_FORCE, TF_DMG_CUSTOM_BURNING );
+			CTakeDamageInfo info( m_hBurnAttacker, m_hBurnAttacker, m_hBurnWeapon, TF_BURNING_DMG, DMG_BURN | DMG_PREVENT_PHYSICS_FORCE, TF_DMG_CUSTOM_BURNING );
 			m_pOuter->TakeDamage( info );
 			m_flFlameBurnTime = gpGlobals->curtime + TF_BURNING_FREQUENCY;
 		}
@@ -1013,7 +1013,7 @@ void CTFPlayerShared::OnRemoveTaunting( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
-void CTFPlayerShared::Burn( CTFPlayer *pAttacker )
+void CTFPlayerShared::Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon )
 {
 #ifdef CLIENT_DLL
 
@@ -1040,6 +1040,7 @@ void CTFPlayerShared::Burn( CTFPlayer *pAttacker )
 	float flFlameLife = bVictimIsPyro ? TF_BURNING_FLAME_LIFE_PYRO : TF_BURNING_FLAME_LIFE;
 	m_flFlameRemoveTime = gpGlobals->curtime + flFlameLife;
 	m_hBurnAttacker = pAttacker;
+	m_hBurnWeapon = pWeapon;
 
 #endif
 }
@@ -1067,6 +1068,7 @@ void CTFPlayerShared::OnRemoveBurning( void )
 	m_pOuter->m_flBurnEffectEndTime = 0;
 #else
 	m_hBurnAttacker = NULL;
+	m_hBurnWeapon = NULL;
 #endif
 }
 

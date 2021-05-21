@@ -1777,7 +1777,7 @@ bool CTFPlayer::ClientCommand( const CCommand &args )
 #ifdef _DEBUG
 	else if ( FStrEq( pcmd, "burn" ) ) 
 	{
-		m_Shared.Burn( this );
+		m_Shared.Burn( this, NULL );
 		return true;
 	}
 	else
@@ -2998,7 +2998,8 @@ int CTFPlayer::OnTakeDamage_Alive( const CTakeDamageInfo &info )
 
 	if ( bIgniting )
 	{
-		m_Shared.Burn( ToTFPlayer( pAttacker ) );
+		CTFWeaponBase *pWeapon = dynamic_cast<CTFWeaponBase *>( info.GetWeapon() );
+		m_Shared.Burn( ToTFPlayer( pAttacker ), pWeapon );
 	}
 
 	// Fire a global game event - "player_hurt"
@@ -6444,7 +6445,7 @@ static ConCommand sv_debug_stuck_particles( "sv_debug_stuck_particles", DebugPar
 void IgnitePlayer()
 {
 	CTFPlayer *pPlayer = ToTFPlayer( ToTFPlayer( UTIL_PlayerByIndex( 1 ) ) );
-	pPlayer->m_Shared.Burn( pPlayer );
+	pPlayer->m_Shared.Burn( pPlayer, NULL );
 }
 static ConCommand cc_IgnitePlayer( "tf_ignite_player", IgnitePlayer, "Sets you on fire", FCVAR_CHEAT | FCVAR_DEVELOPMENTONLY );
 
@@ -6546,7 +6547,7 @@ bool CTFPlayer::SetPowerplayEnabled( bool bOn )
 	{
 		m_flPowerPlayTime = gpGlobals->curtime + 99999;
 		m_Shared.RecalculateInvuln();
-		m_Shared.Burn( this );
+		m_Shared.Burn( this, NULL );
 
 		PowerplayThink();
 	}

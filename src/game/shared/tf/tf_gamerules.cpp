@@ -42,6 +42,7 @@
 	#include "AI_ResponseSystem.h"
 	#include "hl2orange.spa.h"
 	#include "hltvdirector.h"
+	#include "tf_weaponbase_grenadeproj.h"
 #endif
 
 // memdbgon must be the last include file in a .cpp file!!!
@@ -2001,6 +2002,33 @@ const char *CTFGameRules::GetKillingWeaponName( const CTakeDamageInfo &info, CTF
 	else if ( pInflictor )
 	{
 		killer_weapon_name = STRING( pInflictor->m_iClassname );
+
+		// See if this was a deflect kill.
+		if ( CTFBaseRocket *pRocket = dynamic_cast<CTFBaseRocket *>( pInflictor ) )
+		{
+			if ( pRocket->m_iDeflected )
+			{
+				if ( pRocket->GetWeaponID() == TF_WEAPON_ROCKETLAUNCHER )
+				{
+					killer_weapon_name = "deflect_rocket";
+				}
+			}
+		}
+		else if ( CTFWeaponBaseGrenadeProj *pGrenade = dynamic_cast<CTFWeaponBaseGrenadeProj *>( pInflictor ) )
+		{
+			if ( pGrenade->m_iDeflected )
+			{
+				switch ( pGrenade->GetWeaponID() )
+				{
+				case TF_WEAPON_GRENADE_PIPEBOMB:
+					killer_weapon_name = "deflect_sticky";
+					break;
+				case TF_WEAPON_GRENADE_DEMOMAN:
+					killer_weapon_name = "deflect_promode";
+					break;
+				}
+			}
+		}
 	}
 
 	// strip certain prefixes from inflictor's classname
@@ -2016,10 +2044,29 @@ const char *CTFGameRules::GetKillingWeaponName( const CTakeDamageInfo &info, CTF
 		}
 	}
 
-	// look out for sentry rocket as weapon and map it to sentry gun, so we get the sentry death icon
+	// In case of a sentry kill change the icon according to sentry level.
+	if ( 0 == Q_strcmp( killer_weapon_name, "obj_sentrygun" ) )
+	{
+		CBaseObject* pObject = assert_cast<CBaseObject * >( pInflictor );
+
+		if ( pObject )
+		{
+			switch ( pObject->GetUpgradeLevel() )
+			{
+				case 2:
+					killer_weapon_name = "obj_sentrygun2";
+					break;
+				case 3:
+					killer_weapon_name = "obj_sentrygun3";
+					break;
+			}
+		}
+	}
+
+	// look out for sentry rocket as weapon and map it to sentry gun, so we get the L3 sentry death icon
 	if ( 0 == Q_strcmp( killer_weapon_name, "tf_projectile_sentryrocket" ) )
 	{
-		killer_weapon_name = "obj_sentrygun";
+		killer_weapon_name = "obj_sentrygun3";
 	}
 
 	return killer_weapon_name;
