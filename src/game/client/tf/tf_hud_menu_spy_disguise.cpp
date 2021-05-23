@@ -268,10 +268,6 @@ int	CHudMenuSpyDisguise::HudElementKeyInput( int down, ButtonCode_t keynum, cons
 			}
 			return 0;
 
-		case KEY_MINUS:
-			ToggleDisguiseTeam();
-			return 0;
-
 		case KEY_0:
 			// cancel, close the menu
 			engine->ExecuteClientCmd( "lastinv" );

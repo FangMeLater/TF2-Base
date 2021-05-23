@@ -152,15 +152,15 @@ bool CTargetID::ShouldDraw( void )
 				C_TFPlayer *pPlayer = static_cast<C_TFPlayer*>( pEnt );
 				bool bDisguisedEnemy = false;
 				if ( pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && // they're disguised
-					!pPlayer->m_Shared.InCond( TF_COND_DISGUISING ) && // they're not in the process of disguising
+					//!pPlayer->m_Shared.InCond( TF_COND_DISGUISING ) && // they're not in the process of disguising
 					!pPlayer->m_Shared.InCond( TF_COND_STEALTHED ) ) // they're not cloaked
 				{
 					bDisguisedEnemy = (ToTFPlayer( pPlayer->m_Shared.GetDisguiseTarget() ) != NULL);
 				}
 
-				bReturn = ( pLocalTFPlayer->GetTeamNumber() == TEAM_SPECTATOR || pLocalTFPlayer->InSameTeam( pEnt ) || bDisguisedEnemy );
+				bReturn = ( pLocalTFPlayer->GetTeamNumber() == TEAM_SPECTATOR || pLocalTFPlayer->InSameTeam( pEnt ) || bDisguisedEnemy || pLocalTFPlayer->IsPlayerClass(TF_CLASS_SPY) );
 			}
-			else if ( pEnt->IsBaseObject() && pLocalTFPlayer->InSameTeam( pEnt ) )
+			else if ( pEnt->IsBaseObject() && ( pLocalTFPlayer->InSameTeam( pEnt ) || pLocalTFPlayer->IsPlayerClass(TF_CLASS_SPY) ) )
 			{
 				bReturn = true;
 			}
@@ -335,8 +335,16 @@ void CTargetID::UpdateID( void )
 				wszChargeLevel[ ARRAYSIZE(wszChargeLevel)-1 ] = '\0';
 				g_pVGuiLocalize->ConstructString( sDataString, sizeof(sDataString), g_pVGuiLocalize->Find( "#TF_playerid_mediccharge" ), 1, wszChargeLevel );
 			}
+
+			int iTeamNum;
+			if ( bDisguisedEnemy )
+				iTeamNum = pDisguiseTarget->GetTeamNumber();
+			else
+				iTeamNum = pPlayer->GetTeamNumber();
+
+			m_pBGPanel->SetImage( m_pBGPanel->m_szTeamBG[ iTeamNum ] );
 			
-			if ( pLocalTFPlayer->GetTeamNumber() == TEAM_SPECTATOR || pPlayer->InSameTeam( pLocalTFPlayer ) || bDisguisedEnemy )
+			if ( pLocalTFPlayer->GetTeamNumber() == TEAM_SPECTATOR || pPlayer->InSameTeam( pLocalTFPlayer ) || bDisguisedEnemy || pLocalTFPlayer->IsPlayerClass(TF_CLASS_SPY) )
 			{
 				printFormatString = "#TF_playerid_sameteam";
 				bShowHealth = true;
