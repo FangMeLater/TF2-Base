@@ -244,6 +244,8 @@ private:
 	void OnPlayerClassChange( void );
 	void UpdatePartyHat( void );
 
+	bool CanLightCigarette( void );
+
 	void InitInvulnerableMaterial( void );
 
 	bool				m_bWasTaunting;

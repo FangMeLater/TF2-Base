@@ -1893,6 +1893,31 @@ void C_TFPlayer::HandleTaunting( void )
 	}
 }
 
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+bool C_TFPlayer::CanLightCigarette( void )
+{
+	// Start smoke if we're not invisible or disguised
+	if ( !IsPlayerClass( TF_CLASS_SPY ) )								// only on spy model
+		return false;
+
+	if ( !IsAlive() )
+		return false;
+	
+	if ( m_Shared.InCond( TF_COND_DISGUISED ) && IsEnemyPlayer()
+		&& m_Shared.GetDisguiseClass() != TF_CLASS_SPY )				// disguise doesn't show for teammates
+		return false;
+
+	if ( GetPercentInvisible() > 0 )									// don't start if invis
+		return false;
+
+	if ( InFirstPersonView() )											// don't show in first person view
+		return false;
+
+	return true;
+}
+
 void C_TFPlayer::ClientThink()
 {
 	// Pass on through to the base class.
@@ -1910,16 +1935,7 @@ void C_TFPlayer::ClientThink()
 	// Clear our healer, it'll be reset by the medigun client think if we're being healed
 	m_hHealer = NULL;
 
-	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
-
-	// Ugh, this check is getting ugly
-
-	// Start smoke if we're not invisible or disguised
-	if ( IsPlayerClass( TF_CLASS_SPY ) && IsAlive() &&									// only on spy model
-		( !m_Shared.InCond( TF_COND_DISGUISED ) || !IsEnemyPlayer() ) &&	// disguise doesn't show for teammates
-		GetPercentInvisible() <= 0 &&										// don't start if invis
-		( pLocalPlayer != this ) && 										// don't show to local player
-		!( pLocalPlayer->GetObserverMode() == OBS_MODE_IN_EYE && pLocalPlayer->GetObserverTarget() == this ) )	// not if we're spectating this player first person
+	if ( CanLightCigarette() )
 	{
 		if ( !m_bCigaretteSmokeActive )
 		{
