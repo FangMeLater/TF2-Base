@@ -883,7 +883,7 @@ CTFRadiusDamageInfo::CTFRadiusDamageInfo()
 
 ConVar tf_fixedup_damage_radius( "tf_fixedup_damage_radius", "1", FCVAR_DEVELOPMENTONLY );
 
-void CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
+bool CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 {
 	const int MASK_RADIUS_DAMAGE = MASK_SHOT&( ~CONTENTS_HITBOX );
 	trace_t		tr;
@@ -912,7 +912,7 @@ void CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 	UTIL_TraceLine( m_vecSrc, vecSpot, MASK_RADIUS_DAMAGE, &filter, &tr );
 
 	if ( tr.fraction != 1.0 && tr.m_pEnt != pEntity )
-		return;
+		return false;
 
 	// Adjust the damage - apply falloff.
 	float flAdjustedDamage = 0.0f;
@@ -956,7 +956,7 @@ void CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 	}
 
 	if ( flAdjustedDamage <= 0 )
-		return;
+		return false;
 
 	// the explosion can 'see' this entity, so hurt them!
 	if ( tr.startsolid )
@@ -1006,6 +1006,8 @@ void CTFRadiusDamageInfo::ApplyToEntity( CBaseEntity *pEntity )
 
 	// Now hit all triggers along the way that respond to damage... 
 	pEntity->TraceAttackToTriggers( adjustedInfo, m_vecSrc, tr.endpos, dir );
+
+	return true;
 }
 
 
@@ -1016,6 +1018,7 @@ void CTFGameRules::RadiusDamage( CTFRadiusDamageInfo &radiusInfo )
 {
 	CTakeDamageInfo &info = radiusInfo.info;
 	CBaseEntity *pAttacker = info.GetAttacker();
+	int iPlayersDamaged = 0;
 
 	CBaseEntity *pEntity = NULL;
 	for ( CEntitySphereQuery sphere( radiusInfo.m_vecSrc, radiusInfo.m_flRadius ); ( pEntity = sphere.GetCurrentEntity() ) != NULL; sphere.NextEntity() )
@@ -1044,8 +1047,16 @@ void CTFGameRules::RadiusDamage( CTFRadiusDamageInfo &radiusInfo )
 		if ( vecDir.LengthSqr() > ( radiusInfo.m_flRadius * radiusInfo.m_flRadius ) )
 			continue;
 
-		radiusInfo.ApplyToEntity( pEntity );
+		if ( radiusInfo.ApplyToEntity( pEntity ) )
+		{
+			if ( pEntity->IsPlayer() )
+			{
+				iPlayersDamaged++;
+			}
+		}
 	}
+
+	info.SetDamagedOtherPlayers( iPlayersDamaged );
 
 	// For attacker, radius and damage need to be consistent so custom weapons don't screw up rocket jumping.
 	if ( radiusInfo.m_flSelfDamageRadius != 0.0f )

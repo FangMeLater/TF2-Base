@@ -61,6 +61,8 @@ END_NETWORK_TABLE()
 
 #ifdef GAME_DLL
 static string_t s_iszTrainName;
+static string_t s_iszSawBlade01;
+static string_t s_iszSawBlade02;
 #endif
 
 //-----------------------------------------------------------------------------
@@ -73,6 +75,8 @@ CTFGrenadePipebombProjectile::CTFGrenadePipebombProjectile()
 	m_flChargeTime = 0.0f;
 #ifdef GAME_DLL
 	s_iszTrainName  = AllocPooledString( "models/props_vehicles/train_enginecar.mdl" );
+	s_iszSawBlade01 = AllocPooledString( "sawmovelinear01" );
+	s_iszSawBlade02 = AllocPooledString( "sawmovelinear02" );
 #endif
 }
 
@@ -527,8 +531,18 @@ void CTFGrenadePipebombProjectile::VPhysicsCollision( int index, gamevcollisione
 
 	bool bIsDynamicProp = ( NULL != dynamic_cast<CDynamicProp *>( pHitEntity ) );
 
+	// HACK: Prevents stickies from sticking to blades in Sawmill. Need to find a way that is not as silly.
+	CBaseEntity *pParent = pHitEntity->GetMoveParent();
+	if ( pParent )
+	{
+		if ( pParent->NameMatches( s_iszSawBlade01 ) || pParent->NameMatches( s_iszSawBlade02 ) )
+		{
+			bIsDynamicProp = false;
+		}
+	}
+
 	// Pipebombs stick to the world when they touch it
-	if ( pHitEntity && ( pHitEntity->IsWorld() || bIsDynamicProp ) && gpGlobals->curtime > m_flMinSleepTime )
+	if ( ( pHitEntity->IsWorld() || bIsDynamicProp ) && gpGlobals->curtime > m_flMinSleepTime )
 	{
 		m_bTouched = true;
 		VPhysicsGetObject()->EnableMotion( false );

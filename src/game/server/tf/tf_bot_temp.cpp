@@ -660,3 +660,34 @@ CON_COMMAND_F( bot_teleport, "Teleport the specified bot to the specified positi
 	QAngle vecAng( atof(args[5]), atof(args[6]), atof(args[7]) );
 	pBot->Teleport( &vecPos, &vecAng, NULL );
 }
+
+//------------------------------------------------------------------------------
+// Purpose: Force the specified bot to select a weapon in the specified slot
+//------------------------------------------------------------------------------
+CON_COMMAND_F( cc_bot_selectweapon, "Force a bot to select a weapon in a slot. Usage: bot_selectweapon <bot name> <weapon slot>", FCVAR_CHEAT )
+{
+	if ( args.ArgC() < 3 )
+	{
+		Msg( "Too few parameters.  Usage: bot_selectweapon <bot name> <command string...>\n" );
+		return;
+	}
+
+	// get the bot's player object
+	CBasePlayer *pPlayer = UTIL_PlayerByName( args[1] );
+	if ( !pPlayer )
+	{
+		Msg( "No bot with name %s\n", args[1] );
+		return;
+	}
+
+	int slot = atoi( args[2] );
+
+	if ( pPlayer )
+	{
+		CBaseCombatWeapon *pWpn = pPlayer->Weapon_GetSlot( slot );
+		if ( pWpn )
+		{
+			pPlayer->Weapon_Switch( pWpn );
+		}
+	}
+}
