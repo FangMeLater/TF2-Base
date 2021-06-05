@@ -3323,6 +3323,8 @@ void C_TFPlayer::Simulate( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+#define PLAYER_HALFWIDTH	 10
+#define SURFACE_SNOW		 91
 void C_TFPlayer::FireEvent( const Vector& origin, const QAngle& angles, int event, const char *options )
 {
 	if ( event == 7001 )
@@ -3331,7 +3333,34 @@ void C_TFPlayer::FireEvent( const Vector& origin, const QAngle& angles, int even
 		m_flStepSoundTime = 0;
 		Vector vel;
 		EstimateAbsVelocity( vel );
-		UpdateStepSound( GetGroundSurface(), GetAbsOrigin(), vel );
+		surfacedata_t *t_pSurface = GetGroundSurface();
+		UpdateStepSound( t_pSurface, GetAbsOrigin(), vel );
+
+		if ( t_pSurface && !this->m_Shared.IsStealthed() && !this->m_Shared.InCond( TF_COND_DISGUISED ) && ( ( vel.x < -150 || vel.x > 150 ) || ( vel.y < -150 || vel.y > 150 ) ) )
+		{
+			// check for snow underfoot and trigger particle and decal fx
+			if ( t_pSurface->game.material == SURFACE_SNOW )
+			{
+				ParticleProp()->Create("snow_steppuff01", PATTACH_ABSORIGIN, 0 );
+				Vector right;
+				AngleVectors( angles, 0, &right, 0 );
+
+				// Figure out where the top of the stepping leg is 
+				trace_t tr;
+				Vector hipOrigin;
+ 				VectorMA( origin, m_IsFootprintOnLeft ? -PLAYER_HALFWIDTH : PLAYER_HALFWIDTH, right, hipOrigin );
+
+				// Find where that leg hits the ground
+				UTIL_TraceLine( hipOrigin, hipOrigin + Vector(0, 0, -COORD_EXTENT * 1.74), 
+					MASK_SOLID_BRUSHONLY, NULL, COLLISION_GROUP_NONE, &tr);
+
+				// Create the decal
+				CPVSFilter filter( tr.endpos );
+				UTIL_DecalTrace( &tr, m_IsFootprintOnLeft ? "footprintL_snow" : "footprintR_snow" );
+
+				m_IsFootprintOnLeft = !m_IsFootprintOnLeft;
+			}
+		}
 	}
 	else if ( event == AE_WPN_HIDE )
 	{
