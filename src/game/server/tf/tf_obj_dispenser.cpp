@@ -226,6 +226,8 @@ bool CObjectDispenser::StartBuilding( CBaseEntity *pBuilder )
 {
 	SetModel( DISPENSER_MODEL_LEVEL_1_UPGRADE );
 
+	CreateBuildPoints();
+
 	return BaseClass::StartBuilding( pBuilder );
 }
 

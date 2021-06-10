@@ -270,6 +270,12 @@ void CObjectTeleporter::StartUpgrading(void)
 {
 	BaseClass::StartUpgrading( );
 
+	CObjectTeleporter *pMatch = GetMatchingTeleporter();
+	if ( pMatch && !IsRedeploying() && !pMatch->IsRedeploying() )
+	{
+		pMatch->UpdateMaxHealth( GetMaxHealth() );
+	}
+
 	SetState( TELEPORTER_STATE_UPGRADING );
 }
 
@@ -297,6 +303,15 @@ void CObjectTeleporter::OnGoActive( void )
 
 	SetPlaybackRate( 0.0f );
 	m_flLastStateChangeTime = 0.0f;	// used as a flag to initialize the playback rate to 0 in the first DeterminePlaybackRate
+
+	if ( IsMatchingTeleporterReady() )
+	{
+		CObjectTeleporter *pMatch = GetMatchingTeleporter();
+		if ( pMatch )
+		{
+			UpdateMaxHealth( pMatch->GetMaxHealth() );
+		}
+	}
 }
 
 //-----------------------------------------------------------------------------
@@ -457,7 +472,6 @@ void CObjectTeleporter::CopyUpgradeStateToMatch( CObjectTeleporter *pMatch, bool
 	CObjectTeleporter *pObjToCopyTo = bCopyFrom ? this : pMatch;
 
 	pObjToCopyTo->m_iUpgradeMetal = pObjToCopyFrom->m_iUpgradeMetal;
-	pObjToCopyTo->m_iMaxHealth = pObjToCopyFrom->m_iMaxHealth;
 	pObjToCopyTo->m_iUpgradeMetalRequired = pObjToCopyFrom->m_iUpgradeMetalRequired;
 	pObjToCopyTo->m_iUpgradeLevel = pObjToCopyFrom->m_iUpgradeLevel;
 
@@ -665,19 +679,6 @@ void CObjectTeleporter::TeleporterThink( void )
 		if ( GetState() != TELEPORTER_STATE_IDLE && !IsUpgrading() )
 		{
 			SetState( TELEPORTER_STATE_IDLE );
-
-			CObjectTeleporter *pMatch = GetMatchingTeleporter();
-			if ( !pMatch )
-			{
-				// The other end has been destroyed. Revert back to L1.
-				m_iUpgradeLevel = 1;
-
-				// We need to adjust for any damage received if we downgraded
-				float flHealthPercentage = GetHealth() / GetMaxHealthForCurrentLevel();
-				SetMaxHealth( GetMaxHealthForCurrentLevel() );
-				SetHealth( (int)( GetMaxHealthForCurrentLevel() * flHealthPercentage ) );
-				m_iUpgradeMetal = 0;
-			}
 		}
 		return;
 	}
@@ -1120,4 +1121,34 @@ CObjectTeleporter* CObjectTeleporter::FindMatch( void )
 	}
 
 	return pMatch;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void CObjectTeleporter::Explode( void )
+{
+	CObjectTeleporter *pMatch = GetMatchingTeleporter();
+	if ( pMatch )
+	{
+		pMatch->m_iGoalUpgradeLevel = 1;
+		pMatch->m_iUpgradeLevel = 1;
+		pMatch->m_iUpgradeMetal = 0;
+
+		int iHealth = pMatch->GetMaxHealthForCurrentLevel();
+		pMatch->UpdateMaxHealth( iHealth );
+	}
+
+	BaseClass::Explode();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Update the max health value and scale the health value to match
+//-----------------------------------------------------------------------------
+void CObjectTeleporter::UpdateMaxHealth( int nHealth )
+{
+	float flPercentageHealth = (float)GetHealth()/(float)GetMaxHealth();
+	
+	SetMaxHealth( nHealth );
+	SetHealth( nHealth * flPercentageHealth );
 }

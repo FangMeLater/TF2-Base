@@ -59,27 +59,29 @@ bool CHealthKit::MyTouch( CBasePlayer *pPlayer )
 	if ( ValidTouch( pPlayer ) )
 	{
 		if ( pPlayer->TakeHealth( ceil(pPlayer->GetMaxHealth() * PackRatios[GetPowerupSize()]), DMG_GENERIC ) )
+			bSuccess = true;
+
+		CTFPlayer *pTFPlayer = ToTFPlayer( pPlayer );
+
+		Assert( pTFPlayer );
+
+		// Healthkits also contain a fire blanket.
+		if ( pTFPlayer->m_Shared.InCond( TF_COND_BURNING ) )
+		{
+			pTFPlayer->m_Shared.RemoveCond( TF_COND_BURNING );
+			bSuccess = true;
+		}
+
+		if ( bSuccess )
 		{
 			CSingleUserRecipientFilter user( pPlayer );
 			user.MakeReliable();
 
 			UserMessageBegin( user, "ItemPickup" );
-				WRITE_STRING( GetClassname() );
+			WRITE_STRING( GetClassname() );
 			MessageEnd();
 
 			EmitSound( user, entindex(), TF_HEALTHKIT_PICKUP_SOUND );
-
-			bSuccess = true;
-
-			CTFPlayer *pTFPlayer = ToTFPlayer( pPlayer );
-
-			Assert( pTFPlayer );
-
-			// Healthkits also contain a fire blanket.
-			if ( pTFPlayer->m_Shared.InCond( TF_COND_BURNING ) )
-			{
-				pTFPlayer->m_Shared.RemoveCond( TF_COND_BURNING );		
-			}
 		}
 	}
 

@@ -814,9 +814,9 @@ void CBaseObject::StartUpgrading(void)
 	// more health
 	if ( !IsRedeploying() )
 	{
-		int iMaxHealth = GetMaxHealth();
-		SetMaxHealth( iMaxHealth * 1.2 );
-		SetHealth( iMaxHealth * 1.2 );
+		int iMaxHealth = GetMaxHealthForCurrentLevel();
+		SetMaxHealth( iMaxHealth );
+		SetHealth( iMaxHealth );
 	}
 
 	// No ear raping for map placed buildings.
@@ -1515,6 +1515,11 @@ void CBaseObject::FinishedBuilding( void )
 //-----------------------------------------------------------------------------
 void CBaseObject::SetHealth( float flHealth )
 {
+	if ( m_bCarryDeploy && ( flHealth > m_iGoalHealth ) )
+	{
+		flHealth = m_iGoalHealth;
+	}
+
 	bool changed = m_flHealth != flHealth;
 
 	m_flHealth = flHealth;
@@ -1919,8 +1924,7 @@ bool CBaseObject::Repair( float flHealth )
 
 		// Increase health.
 		// Only regenerate up to previous health while re-deploying.
-		int iMaxHealth = IsRedeploying() ? m_iGoalHealth : GetMaxHealth();
-		SetHealth( min( iMaxHealth, m_flHealth + flHealth ) );
+		SetHealth( min( GetMaxHealth(), m_flHealth + flHealth ) );
 
 		// Return true if we're constructed now
 		if ( m_flConstructionTimeLeft <= 0.0f )

@@ -407,6 +407,7 @@ enum {
 // Assist-damage constants
 //-----------------------------------------------------------------------------
 #define TF_TIME_ASSIST_KILL				3.0f	// Time window for a recent damager to get credit for an assist for a kill
+#define TF_TIME_ENV_DEATH_KILL_CREDIT	5.0f
 #define TF_TIME_SUICIDE_KILL_CREDIT		10.0f	// Time window for a recent damager to get credit for a kill if target suicides
 
 //-----------------------------------------------------------------------------
@@ -706,6 +707,7 @@ typedef enum
 #define TF_SCORE_KILL_ASSISTS_PER_POINT			2
 #define TF_SCORE_TELEPORTS_PER_POINT			2	
 #define TF_SCORE_HEAL_HEALTHUNITS_PER_POINT		600
+#define TF_SCORE_BONUS_PER_POINT				1
 
 //-------------------------
 // Shared Teleporter State

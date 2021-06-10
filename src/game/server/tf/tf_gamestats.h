@@ -67,11 +67,13 @@ public:
 	void Event_PlayerFiredWeapon( CTFPlayer *pPlayer, bool bCritical );
 	void Event_PlayerDamage( CBasePlayer *pPlayer, const CTakeDamageInfo &info, int iDamageTaken );
 	void Event_PlayerKilledOther( CBasePlayer *pAttacker, CBaseEntity *pVictim, const CTakeDamageInfo &info );
+	void Event_PlayerSuicide( CBasePlayer *pPlayer );
 	void Event_PlayerCapturedPoint( CTFPlayer *pPlayer );
 	void Event_PlayerDefendedPoint( CTFPlayer *pPlayer );
 	void Event_PlayerDominatedOther( CTFPlayer *pAttacker );
 	void Event_PlayerRevenge( CTFPlayer *pAttacker );
 	void Event_MaxSentryKills( CTFPlayer *pAttacker, int iMaxKills );
+	void Event_PlayerAwardBonusPoints( CTFPlayer *pPlayer, CBaseEntity *pAwarder, int iAmount );
 	void Event_GameEnd( void );
 
 	virtual void FrameUpdatePostEntityThink();

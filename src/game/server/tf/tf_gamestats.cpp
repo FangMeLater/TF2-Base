@@ -730,6 +730,16 @@ void CTFGameStats::Event_PlayerKilledOther( CBasePlayer *pAttacker, CBaseEntity 
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void CTFGameStats::Event_PlayerSuicide( CBasePlayer *pPlayer )
+{
+	CTFPlayer *pTFVictim = static_cast<CTFPlayer *>( pPlayer );
+
+	IncrementStat( pTFVictim, TFSTAT_SUICIDES, 1 );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CTFGameStats::Event_RoundEnd( int iWinningTeam, bool bFullRound, float flRoundTime, bool bWasSuddenDeathWin )
 {
 	TF_Gamestats_LevelStats_t *map = m_reportedStats.m_pCurrentGame;
@@ -901,6 +911,28 @@ void CTFGameStats::Event_PlayerKilled( CBasePlayer *pPlayer, const CTakeDamageIn
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void CTFGameStats::Event_PlayerAwardBonusPoints( CTFPlayer *pPlayer, CBaseEntity *pAwarder, int iAmount )
+{
+	IncrementStat( pPlayer, TFSTAT_BONUS_POINTS, iAmount );
+
+#if 0
+	if ( pAwarder )
+	{
+		CSingleUserRecipientFilter filter( pPlayer );
+		filter.MakeReliable();
+
+		UserMessageBegin( filter, "PlayerBonusPoints" );
+			WRITE_BYTE( iAmount );
+			WRITE_BYTE( pPlayer->entindex() );
+			WRITE_BYTE( pAwarder->entindex() );
+		MessageEnd();
+	}
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CTFGameStats::Event_GameEnd( void )
 {
 	// Calculate score and send out stats to everyone.
@@ -984,6 +1016,7 @@ bool CTFGameStats::ShouldSendToClient( TFStatType_t statType )
 	case TFSTAT_SHOTS_HIT:
 	case TFSTAT_SHOTS_FIRED:
 	case TFSTAT_DEATHS:
+	case TFSTAT_SUICIDES:
 		return false;
 	default:
 		return true;

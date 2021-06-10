@@ -53,6 +53,8 @@ public:
 
 	void CopyUpgradeStateToMatch( CObjectTeleporter *pMatch, bool bCopyFrom );
 
+	virtual void	Explode( void );
+
 	CObjectTeleporter *GetMatchingTeleporter( void );
 	CObjectTeleporter *FindMatch( void );	// Find the teleport partner to this object
 
@@ -110,6 +112,8 @@ private:
 	// Only used by hammer placed entities
 	int m_iTeleporterType;
 	string_t m_szMatchingTeleporterName;
+
+	void UpdateMaxHealth( int nHealth );
 };
 
 #endif // TF_OBJ_TELEPORTER_H

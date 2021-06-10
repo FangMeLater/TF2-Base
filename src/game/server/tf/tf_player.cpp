@@ -3481,6 +3481,19 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 		// if this was suicide, recalculate attacker to see if we want to award the kill to a recent damager
 		info_modified.SetAttacker( TFGameRules()->GetDeathScorer( info.GetAttacker(), pInflictor, this ) );
 	}
+	else if ( !pAttacker || pAttacker == this || pAttacker->IsBSPModel() )
+	{
+		// Recalculate attacker if player killed himself or this was environmental death.
+		CBasePlayer *pDamager = TFGameRules()->GetRecentDamager( this, 0, TF_TIME_ENV_DEATH_KILL_CREDIT );
+		if ( pDamager )
+		{
+			info_modified.SetAttacker( pDamager );
+			info_modified.SetInflictor( NULL );
+			info_modified.SetWeapon( NULL );
+			info_modified.SetDamageType( DMG_GENERIC );
+			info_modified.SetDamageCustom( TF_DMG_CUSTOM_SUICIDE );
+		}
+	}
 
 	BaseClass::Event_Killed( info_modified );
 
@@ -3517,6 +3530,25 @@ void CTFPlayer::Event_Killed( const CTakeDamageInfo &info )
 			{
 				obj->DetonateObject();
 			}		
+		}
+	}
+
+	if ( pAttacker && pAttacker == pInflictor && pAttacker->IsBSPModel() )
+	{
+		CTFPlayer *pDamager = TFGameRules()->GetRecentDamager( this, 0, TF_TIME_ENV_DEATH_KILL_CREDIT );
+
+		if ( pDamager )
+		{
+			IGameEvent *event = gameeventmanager->CreateEvent( "environmental_death" );
+
+			if ( event )
+			{
+				event->SetInt( "killer", pDamager->GetUserID() );
+				event->SetInt( "victim", GetUserID() );
+				event->SetInt( "priority", 9 ); // HLTV event priority, not transmitted
+
+				gameeventmanager->FireEvent( event );
+			}
 		}
 	}
 }

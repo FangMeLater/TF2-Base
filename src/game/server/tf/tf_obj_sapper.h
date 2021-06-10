@@ -37,6 +37,7 @@ public:
 	virtual void	SapperThink( void );
 
 	virtual int		OnTakeDamage( const CTakeDamageInfo &info );
+	virtual void	Killed( const CTakeDamageInfo &info );
 
 private:
 	float m_flSapperDamageAccumulator;

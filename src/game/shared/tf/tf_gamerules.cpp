@@ -1977,6 +1977,9 @@ const char *CTFGameRules::GetKillingWeaponName( const CTakeDamageInfo &info, CTF
 	
 	switch ( info.GetDamageCustom() )
 	{
+		case TF_DMG_CUSTOM_SUICIDE:
+			pszCustomKill = "world";
+			break;
 		case TF_DMG_CUSTOM_TAUNTATK_HADOUKEN:
 			pszCustomKill = "taunt_pyro";
 			break;
@@ -2942,7 +2945,7 @@ bool CTFGameRules::PlayerMayCapturePoint( CBasePlayer *pPlayer, int iPointIndex,
 		return false;
 	}
 
- 	if ( pTFPlayer->m_Shared.InCond( TF_COND_DISGUISED ) )
+ 	if ( pTFPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pTFPlayer->m_Shared.GetDisguiseTeam() != pTFPlayer->GetTeamNumber() )
 	{
 		if ( pszReason )
 		{
@@ -2991,7 +2994,9 @@ int CTFGameRules::CalcPlayerScore( RoundStats_t *pRoundStats )
 					( pRoundStats->m_iStat[TFSTAT_KILLASSISTS] / TF_SCORE_KILL_ASSISTS_PER_POINT ) + 
 					( pRoundStats->m_iStat[TFSTAT_TELEPORTS] / TF_SCORE_TELEPORTS_PER_POINT ) +
 					( pRoundStats->m_iStat[TFSTAT_INVULNS] / TF_SCORE_INVULN ) +
-					( pRoundStats->m_iStat[TFSTAT_REVENGE] / TF_SCORE_REVENGE );
+					( pRoundStats->m_iStat[TFSTAT_REVENGE] / TF_SCORE_REVENGE ) +
+					( pRoundStats->m_iStat[TFSTAT_BONUS_POINTS] / TF_SCORE_BONUS_PER_POINT );
+					
 	return max( iScore, 0 );
 }
 
