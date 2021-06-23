@@ -1156,6 +1156,17 @@ void CHLClient::PostInit()
 		}
 	}
 #endif
+
+#ifdef TF_MOD_CLIENT
+	ConVar* mat_picmip = NULL;
+	mat_picmip = g_pCVar->FindVar( "mat_picmip" );
+
+	if ( mat_picmip )
+	{
+		mat_picmip->SetMin( -10.0f );
+		mat_picmip->SetMax( 10.0f );
+	}
+#endif
 }
 
 //-----------------------------------------------------------------------------

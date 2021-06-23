@@ -46,6 +46,32 @@ $Project "Client (TF)"
 		$File	"TeamBitmapImage.cpp"
 		$File	"voice_menu.cpp"
 
+		$Folder	"PATCH"
+		{
+			$File	"$SRCDIR\game\shared\tf\engine_patch.h"
+			$File	"$SRCDIR\game\shared\tf\engine_patch.cpp"
+			{
+				$Configuration
+				{
+					$Compiler
+					{
+						$Create/UsePrecompiledHeader	"Not Using Precompiled Headers"
+					}
+				}
+			}
+			$File "$SRCDIR\game\shared\tf\util\os_utils.h"
+			$File "$SRCDIR\game\shared\tf\util\os_utils.cpp"
+			{
+				$Configuration
+				{
+					$Compiler
+					{
+						$Create/UsePrecompiledHeader	"Not Using Precompiled Headers"
+					}
+				}
+			}
+		}
+
 		$Folder	"TF"
 		{
 			$File	"$SRCDIR\game\shared\tf\achievements_tf.cpp"

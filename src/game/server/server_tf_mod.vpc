@@ -60,6 +60,32 @@ $Project "Server (TF)"
 		$File	"$SRCDIR\game\shared\touchlink.h"
 		$File	"trigger_area_capture.cpp"
 		$File	"trigger_area_capture.h"
+		
+		$Folder	"PATCH"
+		{
+			$File	"$SRCDIR\game\shared\tf\engine_patch.h"
+			$File	"$SRCDIR\game\shared\tf\engine_patch.cpp"
+			{
+				$Configuration
+				{
+					$Compiler
+					{
+						$Create/UsePrecompiledHeader	"Not Using Precompiled Headers"
+					}
+				}
+			}
+			$File "$SRCDIR\game\shared\tf\util\os_utils.h"
+			$File "$SRCDIR\game\shared\tf\util\os_utils.cpp"
+			{
+				$Configuration
+				{
+					$Compiler
+					{
+						$Create/UsePrecompiledHeader	"Not Using Precompiled Headers"
+					}
+				}
+			}
+		}
 
 		$Folder	"TF"
 		{
