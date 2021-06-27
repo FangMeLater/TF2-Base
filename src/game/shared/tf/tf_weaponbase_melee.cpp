@@ -176,6 +176,8 @@ void CTFWeaponBaseMelee::Swing( CTFPlayer *pPlayer )
 
 	// Set next attack times.
 	m_flNextPrimaryAttack = gpGlobals->curtime + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeFireDelay;
+	m_flNextSecondaryAttack = gpGlobals->curtime + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeFireDelay;
+	pPlayer->m_Shared.SetNextStealthTime( m_flNextSecondaryAttack );
 
 	SetWeaponIdleTime( m_flNextPrimaryAttack + m_pWeaponInfo->GetWeaponData( m_iWeaponMode ).m_flTimeIdleEmpty );
 	

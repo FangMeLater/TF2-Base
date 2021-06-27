@@ -178,6 +178,7 @@ public:
 	void	NoteLastDamageTime( int nDamage );
 	void	OnSpyTouchedByEnemy( void );
 	float	GetLastStealthExposedTime( void ) { return m_flLastStealthExposeTime; }
+	void	SetNextStealthTime( float flTime ) { m_flStealthNextChangeTime = flTime; }
 
 	int		GetDesiredPlayerClassIndex( void );
 

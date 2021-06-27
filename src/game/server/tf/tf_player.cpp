@@ -2718,29 +2718,28 @@ int CTFPlayer::OnTakeDamage( const CTakeDamageInfo &inputInfo )
 				//Msg("Range: %.2f - %.2f\n", flMin, flMax );
 				float flRandomVal = tf_damage_disablespread.GetBool() ? flCenter : RandomFloat( flMin, flMax );
 
-				if ( flRandomVal > 0.5 )
+				// Rocket launcher, Sticky launcher and Scattergun have different short range bonuses
+				if ( pWeapon )
 				{
-					// Rocket launcher, Sticky launcher and Scattergun have different short range bonuses
-					if ( pWeapon )
+					switch ( pWeapon->GetWeaponID() )
 					{
-						switch ( pWeapon->GetWeaponID() )
-						{
-						case TF_WEAPON_ROCKETLAUNCHER:
-							// Rocket launcher and sticky launcher only have half the bonus of the other weapons at short range
+					case TF_WEAPON_ROCKETLAUNCHER:
+						// Rocket launcher and sticky launcher only have half the bonus of the other weapons at short range
+						if (flRandomVal > 0.5)
 							flRandomDamage *= 0.5;
-							break;
-						case TF_WEAPON_PIPEBOMBLAUNCHER:
-						case TF_WEAPON_GRENADELAUNCHER:
-							if ( !( bitsDamage & DMG_NOCLOSEDISTANCEMOD ) )
-							{
-								flRandomDamage *= 0.2;
-							}
-							break;
-						case TF_WEAPON_SCATTERGUN:
-							// Scattergun gets 50% bonus of other weapons at short range
-							flRandomDamage *= 1.5;
-							break;
+						break;
+					case TF_WEAPON_PIPEBOMBLAUNCHER:
+					case TF_WEAPON_GRENADELAUNCHER:
+						if ( !( bitsDamage & DMG_NOCLOSEDISTANCEMOD ) )
+						{
+							flRandomDamage *= 0.2;
 						}
+						break;
+					case TF_WEAPON_SCATTERGUN:
+						// Scattergun gets 50% bonus of other weapons at short range
+						if (flRandomVal > 0.5)
+							flRandomDamage *= 1.5;
+						break;
 					}
 				}
 
