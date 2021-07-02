@@ -33,6 +33,10 @@
 #endif // REPLAY_ENABLED
 #endif
 
+#if defined( TF_MOD_CLIENT ) || defined( TF_MOD )
+#include "tf_gamerules.h"
+#endif
+
 #if defined(TF_CLIENT_DLL) || defined(TF_DLL)
 	#include "tf_gamerules.h"
 	#include "tf_lobby.h"

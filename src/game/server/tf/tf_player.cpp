@@ -691,6 +691,8 @@ void CTFPlayer::Precache()
 	PrecacheParticleSystem( "spy_start_disguise_blue" );
 	PrecacheParticleSystem( "burningplayer_red" );
 	PrecacheParticleSystem( "burningplayer_blue" );
+	PrecacheParticleSystem( "critgun_weaponmodel_blu" );
+	PrecacheParticleSystem( "critgun_weaponmodel_red" );
 	PrecacheParticleSystem( "blood_spray_red_01" );
 	PrecacheParticleSystem( "blood_spray_red_01_far" );
 	PrecacheParticleSystem( "water_blood_impact_red_01" );

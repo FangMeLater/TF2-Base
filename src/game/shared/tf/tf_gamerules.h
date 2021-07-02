@@ -176,6 +176,8 @@ public:
 
 	virtual bool	TimerMayExpire( void );
 
+	void			HandleCTFCaptureBonus( int iTeam );
+
 	virtual void	Activate();
 
 	virtual bool	AllowDamage( CBaseEntity *pVictim, const CTakeDamageInfo &info );
@@ -237,6 +239,7 @@ public:
 
 	virtual void	OnDataChanged( DataUpdateType_t updateType );
 	virtual void	HandleOvertimeBegin();
+	virtual void	GetTeamGlowColor( int nTeam, float &r, float &g, float &b );
 
 	bool			ShouldShowTeamGoal( void );
 

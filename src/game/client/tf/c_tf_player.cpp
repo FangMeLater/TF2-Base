@@ -983,6 +983,430 @@ public:
 
 EXPOSE_INTERFACE( CProxyBurnLevel, IMaterialProxy, "BurnLevel" IMATERIAL_PROXY_INTERFACE_VERSION );
 
+const Vector g_aUrineLevels[TF_TEAM_COUNT] =
+{
+	Vector( 1, 1, 1 ),
+	Vector( 1, 1, 1 ),
+	Vector( 6, 9, 2 ),
+	Vector( 7, 5, 1 ),
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: Used for jarate
+//			Returns the RGB value for the appropriate tint condition.
+//-----------------------------------------------------------------------------
+class CProxyUrineLevel : public CResultProxy
+{
+public:
+	void OnBind( void *pC_BaseEntity )
+	{
+		Assert( m_pResult );
+
+		if ( !pC_BaseEntity )
+		{
+			m_pResult->SetVecValue( 1, 1, 1 );
+			return;
+		}
+
+		C_BaseEntity *pEntity = BindArgToEntity( pC_BaseEntity );
+		if ( !pEntity )
+			return;
+
+		C_TFPlayer *pPlayer = ToTFPlayer( pEntity );
+
+		if ( !pPlayer )
+		{
+			C_BaseCombatWeapon *pWeapon = pEntity->MyCombatWeaponPointer();
+			if ( pWeapon )
+			{
+				pPlayer = ToTFPlayer( pWeapon->GetOwner() );
+			}
+			else
+			{
+				C_BaseViewModel *pVM = dynamic_cast<C_BaseViewModel *>( pEntity );
+				if ( pVM )
+				{
+					pPlayer = ToTFPlayer( pVM->GetOwner() );
+				}
+			}
+		}
+
+		if ( pPlayer && pPlayer->m_Shared.InCond( TF_COND_URINE ) )
+		{
+			int iTeam = pPlayer->GetTeamNumber();
+			if ( pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) && pPlayer->IsEnemyPlayer() )
+			{
+				iTeam = pPlayer->m_Shared.GetDisguiseTeam();
+			}
+
+			if ( iTeam >= FIRST_GAME_TEAM && iTeam < TF_TEAM_COUNT )
+			{
+				float r = g_aUrineLevels[iTeam].x;
+				float g = g_aUrineLevels[iTeam].y;
+				float b = g_aUrineLevels[iTeam].z;
+
+				m_pResult->SetVecValue( r, g, b );
+				return;
+			}
+		}
+
+		m_pResult->SetVecValue( 1, 1, 1 );
+	}
+};
+
+EXPOSE_INTERFACE( CProxyUrineLevel, IMaterialProxy, "YellowLevel" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
+// Purpose: Used for the weapon glow color when critted
+//-----------------------------------------------------------------------------
+class CProxyModelGlowColor : public CResultProxy
+{
+public:
+	void OnBind( void *pC_BaseEntity )
+	{
+		Assert( m_pResult );
+
+		if ( !pC_BaseEntity )
+		{
+			m_pResult->SetVecValue( 1, 1, 1 );
+			return;
+		}
+
+		C_BaseEntity *pEntity = BindArgToEntity( pC_BaseEntity );
+		if ( !pEntity )
+			return;
+
+		Vector vecColor = Vector( 1, 1, 1 );
+
+		C_TFPlayer *pPlayer = ToTFPlayer( pEntity );;
+
+		if ( !pPlayer )
+		{
+			C_BaseCombatWeapon *pWeapon = pEntity->MyCombatWeaponPointer();
+			if ( pWeapon )
+			{
+				pPlayer = ToTFPlayer( pWeapon->GetOwner() );
+			}
+			else
+			{
+				C_BaseViewModel *pVM = dynamic_cast<C_BaseViewModel *>( pEntity );
+				if ( pVM )
+				{
+					pPlayer = ToTFPlayer( pVM->GetOwner() );
+				}
+			}
+		}
+		/*
+			Live TF2 crit glow colors
+			RED Crit: 80 8 5
+			BLU Crit: 5 20 80
+			RED Mini-Crit: 226 150 62
+			BLU Mini-Crit: 29 202 135
+			Hype Mode: 50 2 48
+			*/
+
+		if ( pPlayer && pPlayer->m_Shared.IsCritBoosted() )
+		{
+			if ( !pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) ||
+				!pPlayer->IsEnemyPlayer() ||
+				pPlayer->GetTeamNumber() == pPlayer->m_Shared.GetDisguiseTeam() )
+			{
+				switch ( pPlayer->GetTeamNumber() )
+				{
+				case TF_TEAM_RED:
+					vecColor = Vector( 80, 8, 5 );
+					break;
+				case TF_TEAM_BLUE:
+					vecColor = Vector( 5, 20, 80 );
+					break;
+				}
+			}
+		}
+		else if ( pPlayer && pPlayer->m_Shared.IsMiniCritBoosted() )
+		{
+			if ( !pPlayer->m_Shared.InCond( TF_COND_DISGUISED ) ||
+				pPlayer->InSameTeam( C_TFPlayer::GetLocalTFPlayer() ) ||
+				pPlayer->GetTeamNumber() == pPlayer->m_Shared.GetDisguiseTeam() )
+			{
+				switch ( pPlayer->GetTeamNumber() )
+				{
+					case TF_TEAM_RED:
+						vecColor = Vector( 226, 150, 62 );
+						break;
+					case TF_TEAM_BLUE:
+						vecColor = Vector( 29, 202, 135 );
+						break;
+				}
+			}
+		}
+
+		m_pResult->SetVecValue( vecColor.Base(), 3 );
+	}
+};
+
+EXPOSE_INTERFACE( CProxyModelGlowColor, IMaterialProxy, "ModelGlowColor" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
+// Purpose: Stub class for the ItemTintColor material proxy used by live TF2
+//-----------------------------------------------------------------------------
+class CProxyItemTintColor : public CResultProxy
+{
+public:
+	virtual bool Init( IMaterial *pMaterial, KeyValues *pKeyValues )
+	{
+		return true;
+	}
+	void OnBind( void *pC_BaseEntity )
+	{
+	}
+};
+
+EXPOSE_INTERFACE( CProxyItemTintColor, IMaterialProxy, "ItemTintColor" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
+// Purpose: Stub class for the CommunityWeapon material proxy used by live TF2
+//-----------------------------------------------------------------------------
+class CProxyCommunityWeapon : public CResultProxy
+{
+public:
+	virtual bool Init( IMaterial *pMaterial, KeyValues *pKeyValues )
+	{
+		return true;
+	}
+	void OnBind( void *pC_BaseEntity )
+	{
+	}
+};
+
+EXPOSE_INTERFACE( CProxyCommunityWeapon, IMaterialProxy, "CommunityWeapon" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
+// Purpose: Stub class for the AnimatedWeaponSheen material proxy used by live TF2
+//-----------------------------------------------------------------------------
+class CProxyAnimatedWeaponSheen : public CResultProxy
+{
+public:
+	virtual bool Init( IMaterial *pMaterial, KeyValues *pKeyValues )
+	{
+		return true;
+	}
+	void OnBind( void *pC_BaseEntity )
+	{
+
+	}
+};
+
+EXPOSE_INTERFACE( CProxyAnimatedWeaponSheen, IMaterialProxy, "AnimatedWeaponSheen" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
+// Purpose: Stub class for the WeaponSkin material proxy used by live TF2
+//-----------------------------------------------------------------------------
+class CProxyWeaponSkin : public CResultProxy
+{
+public:
+	virtual bool Init( IMaterial *pMaterial, KeyValues *pKeyValues )
+	{
+		return true;
+	}
+	void OnBind( void *pC_BaseEntity )
+	{
+
+	}
+};
+
+EXPOSE_INTERFACE( CProxyWeaponSkin, IMaterialProxy, "WeaponSkin" IMATERIAL_PROXY_INTERFACE_VERSION );
+
+//-----------------------------------------------------------------------------
+// Purpose: Universal proxy from live tf2 used for spy invisiblity material
+//			Its' purpose is to replace weapon_invis, vm_invis and spy_invis
+//-----------------------------------------------------------------------------
+class CInvisProxy : public CEntityMaterialProxy
+{
+public:
+	CInvisProxy( void );
+	virtual				~CInvisProxy( void );
+	virtual bool		Init( IMaterial *pMaterial, KeyValues* pKeyValues );
+	virtual void		OnBind( C_BaseEntity *pC_BaseEntity );
+	virtual IMaterial *	GetMaterial();
+
+	virtual void		HandleSpyInvis( C_TFPlayer *pPlayer );
+	virtual void		HandleVMInvis( C_BaseViewModel *pVM );
+	virtual void		HandleWeaponInvis( C_BaseEntity *pC_BaseEntity );
+
+private:
+
+	IMaterialVar		*m_pPercentInvisible;
+	IMaterialVar		*m_pCloakColorTint;
+};
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+CInvisProxy::CInvisProxy(void)
+{
+	m_pPercentInvisible = NULL;
+	m_pCloakColorTint = NULL;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+CInvisProxy::~CInvisProxy(void)
+{
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: Get pointer to the color value
+// Input  : *pMaterial - 
+//-----------------------------------------------------------------------------
+bool CInvisProxy::Init( IMaterial *pMaterial, KeyValues* pKeyValues )
+{
+	Assert( pMaterial );
+
+	// Need to get the material var
+	bool bInvis;
+	m_pPercentInvisible = pMaterial->FindVar( "$cloakfactor", &bInvis );
+
+	bool bTint;
+	m_pCloakColorTint = pMaterial->FindVar( "$cloakColorTint", &bTint );
+
+	// if we have $cloakColorTint, it's spy_invis
+	if ( bTint )
+	{
+		return ( bInvis && bTint );
+	}
+
+	return ( bTint );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  :
+//-----------------------------------------------------------------------------
+void CInvisProxy::OnBind( C_BaseEntity *pEnt )
+{
+	if ( !pEnt )
+		return;
+
+	m_pPercentInvisible->SetFloatValue( 0.0 );
+
+	C_TFPlayer *pPlayer = ToTFPlayer( pEnt );
+	if ( pPlayer )
+	{
+		HandleSpyInvis( pPlayer );
+		return;
+	}
+
+	C_BaseViewModel *pVM = dynamic_cast<C_BaseViewModel *>( pEnt );
+	if ( pVM )
+	{
+		HandleVMInvis( pVM );
+		return;
+	}
+
+	HandleWeaponInvis( pEnt );
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  :
+//-----------------------------------------------------------------------------
+void CInvisProxy::HandleSpyInvis( C_TFPlayer *pPlayer )
+{
+	if ( !m_pPercentInvisible || !m_pCloakColorTint )
+		return;
+
+	m_pPercentInvisible->SetFloatValue( pPlayer->GetEffectiveInvisibilityLevel() );
+
+	float r, g, b;
+
+	switch ( pPlayer->GetTeamNumber() )
+	{
+	case TF_TEAM_RED:
+		r = 1.0; g = 0.5; b = 0.4;
+		break;
+
+	case TF_TEAM_BLUE:
+		r = 0.4; g = 0.5; b = 1.0;
+		break;
+
+	default:
+		r = 0.4; g = 0.5; b = 1.0;
+		break;
+	}
+
+	m_pCloakColorTint->SetVecValue( r, g, b );
+}
+
+extern ConVar tf_vm_min_invis;
+extern ConVar tf_vm_max_invis;
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  :
+//-----------------------------------------------------------------------------
+void CInvisProxy::HandleVMInvis( C_BaseViewModel *pVM )
+{
+	if ( !m_pPercentInvisible )
+		return;
+
+	C_TFPlayer *pPlayer = ToTFPlayer( pVM->GetOwner() );
+
+	if ( !pPlayer )
+	{
+		m_pPercentInvisible->SetFloatValue( 0.0f );
+		return;
+	}
+
+	float flPercentInvisible = pPlayer->GetPercentInvisible();
+
+	// remap from 0.22 to 0.5
+	// but drop to 0.0 if we're not invis at all
+	float flWeaponInvis = ( flPercentInvisible < 0.01 ) ?
+		0.0 :
+		RemapVal( flPercentInvisible, 0.0, 1.0, tf_vm_min_invis.GetFloat(), tf_vm_max_invis.GetFloat() );
+
+	if ( pPlayer->m_Shared.InCond( TF_COND_STEALTHED_BLINK ) )
+	{
+		m_pPercentInvisible->SetFloatValue( 0.3f );
+	}
+	else
+	{
+		m_pPercentInvisible->SetFloatValue( flWeaponInvis );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+// Input  :
+//-----------------------------------------------------------------------------
+void CInvisProxy::HandleWeaponInvis( C_BaseEntity *pEnt )
+{
+	if ( !m_pPercentInvisible )
+		return;
+
+	C_BaseEntity *pMoveParent = pEnt->GetMoveParent();
+	if ( !pMoveParent || !pMoveParent->IsPlayer() )
+	{
+		m_pPercentInvisible->SetFloatValue( 0.0f );
+		return;
+	}
+
+	C_TFPlayer *pPlayer = ToTFPlayer( pMoveParent );
+	Assert( pPlayer );
+
+	m_pPercentInvisible->SetFloatValue( pPlayer->GetEffectiveInvisibilityLevel() );
+}
+
+IMaterial *CInvisProxy::GetMaterial()
+{
+	if ( !m_pPercentInvisible )
+		return NULL;
+
+	return m_pPercentInvisible->GetOwningMaterial();
+}
+
+EXPOSE_INTERFACE(CInvisProxy, IMaterialProxy, "invis" IMATERIAL_PROXY_INTERFACE_VERSION);
+
 //-----------------------------------------------------------------------------
 // Purpose: RecvProxy that converts the Player's object UtlVector to entindexes
 //-----------------------------------------------------------------------------

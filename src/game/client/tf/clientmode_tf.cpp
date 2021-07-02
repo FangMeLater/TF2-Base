@@ -44,6 +44,8 @@
 #include "tf_hud_menu_spy_disguise.h"
 #include "tf_statsummary.h"
 #include "tf_hud_freezepanel.h"
+#include "clienteffectprecachesystem.h"
+#include "glow_outline_effect.h"
 #include "cam_thirdperson.h"
 #include "usermessages.h"
 
@@ -215,6 +217,13 @@ public:
 static CTFModeManager g_ModeManager;
 IVModeManager *modemanager = ( IVModeManager * )&g_ModeManager;
 
+CLIENTEFFECT_REGISTER_BEGIN( PrecachePostProcessingEffectsGlow )
+	CLIENTEFFECT_MATERIAL( "dev/glow_blur_x" )
+	CLIENTEFFECT_MATERIAL( "dev/glow_blur_y" )
+	CLIENTEFFECT_MATERIAL( "dev/glow_color" )
+	CLIENTEFFECT_MATERIAL( "dev/glow_downsample" )
+	CLIENTEFFECT_MATERIAL( "dev/halo_add_to_screen" )
+CLIENTEFFECT_REGISTER_END_CONDITIONAL(	engine->GetDXSupportLevel() >= 90 )
 
 // --------------------------------------------------------------------------------- //
 // CTFModeManager implementation.
@@ -439,6 +448,17 @@ bool ClientModeTFNormal::ShouldDrawViewModel()
 	}
 
 	return r_drawviewmodel.GetBool();
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool ClientModeTFNormal::DoPostScreenSpaceEffects( const CViewSetup *pSetup )
+{
+	if ( !IsInFreezeCam() )
+		g_GlowObjectManager.RenderGlowEffects( pSetup, 0 );
+
+	return BaseClass::DoPostScreenSpaceEffects( pSetup );
 }
 
 int ClientModeTFNormal::GetDeathMessageStartHeight( void )

@@ -102,6 +102,8 @@ public:
 	void	ConditionThink( void );
 	float	GetConditionDuration( int nCond );
 	// Condition helpers
+	bool	IsCritBoosted( void );	
+	bool	IsMiniCritBoosted( void );		
 	bool	IsStealthed( void );
 
 	void	ConditionGameRulesThink( void );
@@ -117,7 +119,7 @@ public:
 	virtual void OnDataChanged( void );
 
 	// check the newly networked conditions for changes
-	void	UpdateConditions( void );
+	void	SyncConditions( int nCond, int nOldCond, int nUnused, int iOffset );
 #endif
 
 	void	Disguise( int nTeam, int nClass );
@@ -146,6 +148,8 @@ public:
 	void	RecalcDisguiseWeapon( void );
 	int		GetDisguiseWeaponModelIndex( void ) { return m_iDisguiseWeaponModelIndex; }
 	CTFWeaponInfo *GetDisguiseWeaponInfo( void );
+
+	void	UpdateCritBoostEffect( bool bForceHide = false );												   
 #endif
 
 #ifdef GAME_DLL
@@ -228,6 +232,7 @@ private:
 	void OnAddDisguising( void );
 	void OnAddDisguised( void );
 	void OnAddTaunting( void );
+	void OnAddCritboosted( void );
 
 	void OnRemoveZoomed( void );
 	void OnRemoveBurning( void );
@@ -237,6 +242,7 @@ private:
 	void OnRemoveInvulnerable( void );
 	void OnRemoveTeleported( void );
 	void OnRemoveTaunting( void );
+	void OnRemoveCritboosted( void );
 
 	float GetCritMult( void );
 
@@ -256,6 +262,11 @@ private:
 	// Vars that are networked.
 	CNetworkVar( int, m_nPlayerState );			// Player state.
 	CNetworkVar( int, m_nPlayerCond );			// Player condition flags.
+	// Ugh...
+	CNetworkVar( int, m_nPlayerCondEx ); // 33-64
+	CNetworkVar( int, m_nPlayerCondEx2 ); // 65-96
+	CNetworkVar( int, m_nPlayerCondEx3 ); // 97-128
+	CNetworkVar( int, m_nPlayerCondEx4 ); // 129-160
 	float m_flCondExpireTimeLeft[TF_COND_LAST];		// Time until each condition expires
 
 //TFTODO: What if the player we're disguised as leaves the server?
@@ -341,9 +352,18 @@ private:
 
 	WEAPON_FILE_INFO_HANDLE	m_hDisguiseWeaponInfo;
 
-	int	m_nOldConditions;
+	CNewParticleEffect *m_pCritEffect;
+	EHANDLE m_hCritEffectHost;
+	CSoundPatch *m_pCritSound;
+
 	int	m_nOldDisguiseClass;
 	int m_nOldDisguiseTeam;
+
+	int	m_nOldConditions;
+	int m_nOldConditionsEx;
+	int m_nOldConditionsEx2;
+	int m_nOldConditionsEx3;
+	int m_nOldConditionsEx4;
 #endif
 };			   
 

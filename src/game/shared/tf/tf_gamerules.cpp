@@ -85,6 +85,7 @@ ConVar tf_birthday( "tf_birthday", "0", FCVAR_NOTIFY | FCVAR_REPLICATED );
 #ifdef GAME_DLL
 // TF overrides the default value of this convar
 ConVar mp_waitingforplayers_time( "mp_waitingforplayers_time", (IsX360()?"15":"30"), FCVAR_GAMEDLL | FCVAR_DEVELOPMENTONLY, "WaitingForPlayers time length in seconds" );
+ConVar tf_ctf_bonus_time( "tf_ctf_bonus_time", "10", FCVAR_NOTIFY, "Length of team crit time for CTF capture." );
 ConVar tf_gravetalk( "tf_gravetalk", "1", FCVAR_NOTIFY, "Allows living players to hear dead players using text/voice chat." );
 ConVar tf_spectalk( "tf_spectalk", "1", FCVAR_NOTIFY, "Allows living players to hear spectators using text chat." );
 #endif
@@ -2580,6 +2581,29 @@ bool CTFGameRules::TimerMayExpire( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void CTFGameRules::HandleCTFCaptureBonus( int iTeam )
+{
+	float flBoostTime = tf_ctf_bonus_time.GetFloat();
+	if ( flBoostTime > 0.0 )
+	{
+		for ( int i = 1; i < gpGlobals->maxClients; i++ )
+		{
+			CTFPlayer *pPlayer = ToTFPlayer( UTIL_PlayerByIndex( i ) );
+
+			if ( !pPlayer )
+				continue;
+
+			if ( pPlayer->GetTeamNumber() == iTeam && pPlayer->IsAlive() )
+			{
+				pPlayer->m_Shared.AddCond( TF_COND_CRITBOOSTED_CTF_CAPTURE, flBoostTime );
+			}
+		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CTFGameRules::RoundRespawn( void )
 {
 	// remove any buildings, grenades, rockets, etc. the player put into the world
@@ -2639,6 +2663,17 @@ void CTFGameRules::InternalHandleTeamWin( int iWinningTeam )
 					{
 						pPlayer->DropFlag();
 					}
+
+					// Hide their weapon.
+					CTFWeaponBase *pWeapon = pPlayer->GetActiveTFWeapon();
+					if ( pWeapon )
+					{
+						pWeapon->SetWeaponVisible( false );
+					}
+				}
+				else if ( pPlayer->IsAlive() )
+				{
+					pPlayer->m_Shared.AddCond( TF_COND_CRITBOOSTED_BONUS_TIME );
 				}
 
 				pPlayer->TeamFortress_SetSpeed();
@@ -3433,6 +3468,24 @@ bool CTFGameRules::ShouldShowTeamGoal( void )
 		return true;
 
 	return false;
+}
+
+void CTFGameRules::GetTeamGlowColor( int nTeam, float &r, float &g, float &b )
+{
+	switch ( nTeam )
+	{
+		case TF_TEAM_BLUE:
+			r = 0.49f; g = 0.66f; b = 0.77f;
+			break;
+
+		case TF_TEAM_RED:
+			r = 0.74f; g = 0.23f; b = 0.23f;
+			break;
+
+		default:
+			r = 0.76f; g = 0.76f; b = 0.76f;
+			break;
+	}
 }
 
 #endif

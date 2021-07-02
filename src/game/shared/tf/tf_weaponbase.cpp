@@ -472,7 +472,7 @@ void CTFWeaponBase::CalcIsAttackCritical( void)
 		RandomSeed( m_iCurrentSeed );
 	}
 	
-	if ( ( TFGameRules()->State_Get() == GR_STATE_TEAM_WIN ) && ( TFGameRules()->GetWinningTeam() == pPlayer->GetTeamNumber() ) )
+	if ( pPlayer->m_Shared.IsCritBoosted() )
 	{
 		m_bCurrentAttackIsCrit = true;
 	}

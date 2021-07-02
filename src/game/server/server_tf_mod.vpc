@@ -19,7 +19,7 @@ $Configuration
 	$Compiler
 	{
 		$AdditionalIncludeDirectories	"$BASE;$SRCDIR\game\shared\hl2;.\tf;.\tf\vgui;$SRCDIR\game\shared\Multiplayer;$SRCDIR\game\shared\tf"
-		$PreprocessorDefinitions		"$BASE;TF_MOD"
+		$PreprocessorDefinitions		"$BASE;TF_MOD;GLOWS_ENABLE"
 	}
 }
 

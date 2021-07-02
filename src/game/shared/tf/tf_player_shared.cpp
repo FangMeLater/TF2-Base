@@ -119,6 +119,10 @@ END_RECV_TABLE()
 
 BEGIN_RECV_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
 	RecvPropInt( RECVINFO( m_nPlayerCond ) ),
+	RecvPropInt( RECVINFO( m_nPlayerCondEx ) ),
+	RecvPropInt( RECVINFO( m_nPlayerCondEx2 ) ),
+	RecvPropInt( RECVINFO( m_nPlayerCondEx3 ) ),
+	RecvPropInt( RECVINFO( m_nPlayerCondEx4 ) ),
 	RecvPropInt( RECVINFO( m_bJumping) ),
 	RecvPropInt( RECVINFO( m_nNumHealers ) ),
 	RecvPropInt( RECVINFO( m_iCritMult ) ),
@@ -142,6 +146,10 @@ END_RECV_TABLE()
 BEGIN_PREDICTION_DATA_NO_BASE( CTFPlayerShared )
 	DEFINE_PRED_FIELD( m_nPlayerState, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_nPlayerCond, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_nPlayerCondEx, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_nPlayerCondEx2, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_nPlayerCondEx3, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
+	DEFINE_PRED_FIELD( m_nPlayerCondEx4, FIELD_INTEGER, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_flCloakMeter, FIELD_FLOAT, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bJumping, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
 	DEFINE_PRED_FIELD( m_bAirDash, FIELD_BOOLEAN, FTYPEDESC_INSENDTABLE ),
@@ -162,7 +170,11 @@ BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerSharedLocal )
 END_SEND_TABLE()
 
 BEGIN_SEND_TABLE_NOBASE( CTFPlayerShared, DT_TFPlayerShared )
-	SendPropInt( SENDINFO( m_nPlayerCond ), TF_COND_LAST, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
+	SendPropInt( SENDINFO( m_nPlayerCond ), -1, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
+	SendPropInt( SENDINFO( m_nPlayerCondEx ), -1, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
+	SendPropInt( SENDINFO( m_nPlayerCondEx2 ), -1, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
+	SendPropInt( SENDINFO( m_nPlayerCondEx3 ), -1, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
+	SendPropInt( SENDINFO( m_nPlayerCondEx4 ), -1, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
 	SendPropInt( SENDINFO( m_bJumping ), 1, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
 	SendPropInt( SENDINFO( m_nNumHealers ), 5, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
 	SendPropInt( SENDINFO( m_iCritMult ), 8, SPROP_UNSIGNED | SPROP_CHANGES_OFTEN ),
@@ -210,6 +222,8 @@ CTFPlayerShared::CTFPlayerShared()
 #ifdef CLIENT_DLL
 	m_iDisguiseWeaponModelIndex = -1;
 	m_pDisguiseWeaponInfo = NULL;
+	m_pCritSound = NULL;
+	m_pCritEffect = NULL;
 #endif
 }
 
@@ -229,7 +243,43 @@ void CTFPlayerShared::Init( CTFPlayer *pPlayer )
 void CTFPlayerShared::AddCond( int nCond, float flDuration /* = PERMANENT_CONDITION */ )
 {
 	Assert( nCond >= 0 && nCond < TF_COND_LAST );
-	m_nPlayerCond |= (1<<nCond);
+	int nCondFlag = nCond;
+	int *pVar = NULL;
+	if ( nCond < 128 )
+	{
+		if ( nCond < 96 )
+		{
+			if ( nCond < 64 )
+			{
+				if ( nCond < 32 )
+				{
+					pVar = &m_nPlayerCond.GetForModify();
+				}
+				else
+				{
+					pVar = &m_nPlayerCondEx.GetForModify();
+					nCondFlag -= 32;
+				}
+			}
+			else
+			{
+				pVar = &m_nPlayerCondEx2.GetForModify();
+				nCondFlag -= 64;
+			}
+		}
+		else
+		{
+			pVar = &m_nPlayerCondEx3.GetForModify();
+			nCondFlag -= 96;
+		}
+	}
+	else
+	{
+		pVar = &m_nPlayerCondEx4.GetForModify();
+		nCondFlag -= 128;
+	}
+
+	*pVar |= ( 1 << nCondFlag );
 	m_flCondExpireTimeLeft[nCond] = flDuration;
 	OnConditionAdded( nCond );
 }
@@ -241,7 +291,35 @@ void CTFPlayerShared::RemoveCond( int nCond )
 {
 	Assert( nCond >= 0 && nCond < TF_COND_LAST );
 
-	m_nPlayerCond &= ~(1<<nCond);
+	int nCondFlag = nCond;
+	int *pVar = NULL;
+	if ( nCond < 96 )
+	{
+		if ( nCond < 64 )
+		{
+			if ( nCond < 32 )
+			{
+				pVar = &m_nPlayerCond.GetForModify();
+			}
+			else
+			{
+				pVar = &m_nPlayerCondEx.GetForModify();
+				nCondFlag -= 32;
+			}
+		}
+		else
+		{
+			pVar = &m_nPlayerCondEx2.GetForModify();
+			nCondFlag -= 64;
+		}
+	}
+	else
+	{
+		pVar = &m_nPlayerCondEx3.GetForModify();
+		nCondFlag -= 96;
+	}
+
+	*pVar &= ~( 1 << nCondFlag );
 	m_flCondExpireTimeLeft[nCond] = 0;
 
 	OnConditionRemoved( nCond );
@@ -254,7 +332,35 @@ bool CTFPlayerShared::InCond( int nCond )
 {
 	Assert( nCond >= 0 && nCond < TF_COND_LAST );
 
-	return ( ( m_nPlayerCond & (1<<nCond) ) != 0 );
+	int nCondFlag = nCond;
+	const int *pVar = NULL;
+	if ( nCond < 96 )
+	{
+		if ( nCond < 64 )
+		{
+			if ( nCond < 32 )
+			{
+				pVar = &m_nPlayerCond.Get();
+			}
+			else
+			{
+				pVar = &m_nPlayerCondEx.Get();
+				nCondFlag -= 32;
+			}
+		}
+		else
+		{
+			pVar = &m_nPlayerCondEx2.Get();
+			nCondFlag -= 64;
+		}
+	}
+	else
+	{
+		pVar = &m_nPlayerCondEx3.Get();
+		nCondFlag -= 96;
+	}
+
+	return ( ( *pVar & ( 1 << nCondFlag ) ) != 0 );
 }
 
 //-----------------------------------------------------------------------------
@@ -270,6 +376,36 @@ float CTFPlayerShared::GetConditionDuration( int nCond )
 	}
 	
 	return 0.0f;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CTFPlayerShared::IsCritBoosted( void )
+{
+	// Oh man...
+	if (InCond( TF_COND_CRITBOOSTED ) ||
+		InCond( TF_COND_CRITBOOSTED_PUMPKIN ) ||
+		InCond( TF_COND_CRITBOOSTED_USER_BUFF ) ||
+		InCond( TF_COND_CRITBOOSTED_FIRST_BLOOD ) ||
+		InCond( TF_COND_CRITBOOSTED_BONUS_TIME ) ||
+		InCond( TF_COND_CRITBOOSTED_CTF_CAPTURE ) ||
+		InCond( TF_COND_CRITBOOSTED_ON_KILL ) ||
+		InCond( TF_COND_CRITBOOSTED_CARD_EFFECT ) ||
+		InCond( TF_COND_CRITBOOSTED_RUNE_TEMP ) )
+		return true;
+	return false;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+bool CTFPlayerShared::IsMiniCritBoosted( void )
+{
+	if (InCond( TF_COND_OFFENSEBUFF ) ||
+		InCond( TF_COND_ENERGY_BUFF ) )
+		return true;
+	return false;
 }
 
 //-----------------------------------------------------------------------------
@@ -325,6 +461,10 @@ void CTFPlayerShared::DebugPrintConditions( void )
 void CTFPlayerShared::OnPreDataChanged( void )
 {
 	m_nOldConditions = m_nPlayerCond;
+	m_nOldConditionsEx = m_nPlayerCondEx;
+	m_nOldConditionsEx2 = m_nPlayerCondEx2;
+	m_nOldConditionsEx3 = m_nPlayerCondEx3;
+	m_nOldConditionsEx4 = m_nPlayerCondEx4;
 	m_nOldDisguiseClass = GetDisguiseClass();
 	m_nOldDisguiseTeam = GetDisguiseTeam();
 	m_iOldDisguiseWeaponModelIndex = m_iDisguiseWeaponModelIndex;
@@ -336,12 +476,17 @@ void CTFPlayerShared::OnPreDataChanged( void )
 void CTFPlayerShared::OnDataChanged( void )
 {
 	// Update conditions from last network change
-	if ( m_nOldConditions != m_nPlayerCond )
-	{
-		UpdateConditions();
+	SyncConditions(m_nPlayerCond, m_nOldConditions, 0, 0);
+	SyncConditions(m_nPlayerCondEx, m_nOldConditionsEx, 0, 32);
+	SyncConditions(m_nPlayerCondEx2, m_nOldConditionsEx2, 0, 64);
+	SyncConditions(m_nPlayerCondEx3, m_nOldConditionsEx3, 0, 96);
+	SyncConditions(m_nPlayerCondEx4, m_nOldConditionsEx4, 0, 128);
 
-		m_nOldConditions = m_nPlayerCond;
-	}	
+	m_nOldConditions = m_nPlayerCond;
+	m_nOldConditionsEx = m_nPlayerCondEx;
+	m_nOldConditionsEx2 = m_nPlayerCondEx2;
+	m_nOldConditionsEx3 = m_nPlayerCondEx3;
+	m_nOldConditionsEx4 = m_nPlayerCondEx4;
 
 	if ( m_nOldDisguiseClass != GetDisguiseClass() || m_nOldDisguiseTeam != GetDisguiseTeam() )
 	{
@@ -372,22 +517,25 @@ void CTFPlayerShared::OnDataChanged( void )
 //-----------------------------------------------------------------------------
 // Purpose: check the newly networked conditions for changes
 //-----------------------------------------------------------------------------
-void CTFPlayerShared::UpdateConditions( void )
+void CTFPlayerShared::SyncConditions(int nCond, int nOldCond, int nUnused, int iOffset)
 {
-	int nCondChanged = m_nPlayerCond ^ m_nOldConditions;
-	int nCondAdded = nCondChanged & m_nPlayerCond;
-	int nCondRemoved = nCondChanged & m_nOldConditions;
+	if (nCond == nOldCond)
+		return;
+
+	int nCondChanged = nCond ^ nOldCond;
+	int nCondAdded = nCondChanged & nCond;
+	int nCondRemoved = nCondChanged & nOldCond;
 
 	int i;
-	for ( i=0;i<TF_COND_LAST;i++ )
+	for (i = 0; i < 32; i++)
 	{
-		if ( nCondAdded & (1<<i) )
+		if ( nCondAdded & ( 1 << i ) )
 		{
-			OnConditionAdded( i );
+			OnConditionAdded( i + iOffset );
 		}
-		else if ( nCondRemoved & (1<<i) )
+		else if ( nCondRemoved & ( 1 << i ) )
 		{
-			OnConditionRemoved( i );
+			OnConditionRemoved( i + iOffset );
 		}
 	}
 }
@@ -402,7 +550,7 @@ void CTFPlayerShared::RemoveAllCond( CTFPlayer *pPlayer )
 	int i;
 	for ( i=0;i<TF_COND_LAST;i++ )
 	{
-		if ( m_nPlayerCond & (1<<i) )
+		if (InCond(i))
 		{
 			RemoveCond( i );
 		}
@@ -410,6 +558,10 @@ void CTFPlayerShared::RemoveAllCond( CTFPlayer *pPlayer )
 
 	// Now remove all the rest
 	m_nPlayerCond = 0;
+	m_nPlayerCondEx = 0;
+	m_nPlayerCondEx2 = 0;
+	m_nPlayerCondEx3 = 0;
+	m_nPlayerCondEx4 = 0;
 }
 
 
@@ -454,6 +606,18 @@ void CTFPlayerShared::OnConditionAdded( int nCond )
 
 	case TF_COND_TAUNTING:
 		OnAddTaunting();
+		break;
+
+	case TF_COND_CRITBOOSTED:
+	case TF_COND_CRITBOOSTED_PUMPKIN:
+	case TF_COND_CRITBOOSTED_USER_BUFF:
+	case TF_COND_CRITBOOSTED_FIRST_BLOOD:
+	case TF_COND_CRITBOOSTED_BONUS_TIME:
+	case TF_COND_CRITBOOSTED_CTF_CAPTURE:
+	case TF_COND_CRITBOOSTED_ON_KILL:
+	case TF_COND_CRITBOOSTED_CARD_EFFECT:
+	case TF_COND_CRITBOOSTED_RUNE_TEMP:
+		OnAddCritboosted();
 		break;
 
 	default:
@@ -504,6 +668,18 @@ void CTFPlayerShared::OnConditionRemoved( int nCond )
 		OnRemoveTeleported();
 		break;
 
+	case TF_COND_CRITBOOSTED:
+	case TF_COND_CRITBOOSTED_PUMPKIN:
+	case TF_COND_CRITBOOSTED_USER_BUFF:
+	case TF_COND_CRITBOOSTED_FIRST_BLOOD:
+	case TF_COND_CRITBOOSTED_BONUS_TIME:
+	case TF_COND_CRITBOOSTED_CTF_CAPTURE:
+	case TF_COND_CRITBOOSTED_ON_KILL:
+	case TF_COND_CRITBOOSTED_CARD_EFFECT:
+	case TF_COND_CRITBOOSTED_RUNE_TEMP:
+		OnRemoveCritboosted();
+		break;
+
 	default:
 		break;
 	}
@@ -535,7 +711,7 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 	int i;
 	for ( i=0;i<TF_COND_LAST;i++ )
 	{
-		if ( m_nPlayerCond & (1<<i) )
+		if ( InCond( i ) )
 		{
 			// Ignore permanent conditions
 			if ( m_flCondExpireTimeLeft[i] != PERMANENT_CONDITION )
@@ -894,6 +1070,7 @@ void CTFPlayerShared::OnDisguiseChanged( void )
 	// recalc disguise model index
 	RecalcDisguiseWeapon();
 	m_pOuter->UpdateRecentlyTeleportedEffect();
+	UpdateCritBoostEffect();
 }
 #endif
 
@@ -1013,6 +1190,26 @@ void CTFPlayerShared::OnRemoveTaunting( void )
 //-----------------------------------------------------------------------------
 // Purpose: 
 //-----------------------------------------------------------------------------
+void CTFPlayerShared::OnAddCritboosted(void)
+{
+#ifdef CLIENT_DLL
+	UpdateCritBoostEffect();
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void CTFPlayerShared::OnRemoveCritboosted(void)
+{
+#ifdef CLIENT_DLL
+	UpdateCritBoostEffect();
+#endif
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
 void CTFPlayerShared::Burn( CTFPlayer *pAttacker, CTFWeaponBase *pWeapon )
 {
 #ifdef CLIENT_DLL
@@ -1079,6 +1276,7 @@ void CTFPlayerShared::OnAddStealthed( void )
 {
 #ifdef CLIENT_DLL
 	m_pOuter->EmitSound( "Player.Spy_Cloak" );
+	UpdateCritBoostEffect();
 	m_pOuter->RemoveAllDecals();
 	m_pOuter->UpdateRecentlyTeleportedEffect();
 #else
@@ -1112,6 +1310,7 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 {
 #ifdef CLIENT_DLL
 	m_pOuter->EmitSound( "Player.Spy_UnCloak" );
+	UpdateCritBoostEffect();
 	m_pOuter->UpdateRecentlyTeleportedEffect();
 #endif
 
@@ -1565,6 +1764,108 @@ CTFWeaponInfo *CTFPlayerShared::GetDisguiseWeaponInfo( void )
 	return m_pDisguiseWeaponInfo;
 }
 
+//-----------------------------------------------------------------------------
+// Purpose: Crit effects handling.
+//-----------------------------------------------------------------------------
+void CTFPlayerShared::UpdateCritBoostEffect( bool bForceHide /*= false*/ )
+{
+	bool bShouldShow = !bForceHide;
+
+	if ( bShouldShow )
+	{
+		if ( m_pOuter->IsDormant() )
+		{
+			bShouldShow = false;
+		}
+		else if ( !IsCritBoosted() )
+		{
+			bShouldShow = false;
+		}
+		else if ( IsStealthed() )
+		{
+			bShouldShow = false;
+		}
+		else if ( InCond( TF_COND_DISGUISED ) &&
+			m_pOuter->IsEnemyPlayer() &&
+			m_pOuter->GetTeamNumber() != GetDisguiseTeam() )
+		{
+			// Don't show crit effect for disguised enemy spies unless they're disguised
+			// as their own team.
+			bShouldShow = false;
+		}
+	}
+
+	if ( bShouldShow )
+	{
+		// Update crit effect model.
+		if ( m_pCritEffect )
+		{
+			if ( m_hCritEffectHost.Get() )
+				m_hCritEffectHost->ParticleProp()->StopEmission( m_pCritEffect );
+
+			m_pCritEffect = NULL;
+		}
+
+		if ( !m_pOuter->ShouldDrawThisPlayer() )
+		{
+			m_hCritEffectHost = m_pOuter->GetViewModel();
+		}
+		else
+		{
+			C_BaseCombatWeapon *pWeapon = m_pOuter->GetActiveWeapon();
+
+			// Don't add crit effect to weapons without a model.
+			if ( pWeapon && pWeapon->GetWorldModelIndex() != 0 )
+			{
+				m_hCritEffectHost = pWeapon;
+			}
+			else
+			{
+				m_hCritEffectHost = m_pOuter;
+			}
+		}
+
+		if ( m_hCritEffectHost.Get() )
+		{
+			if ( InCond( TF_COND_DISGUISED ) && !m_pOuter->IsLocalPlayer() && m_pOuter->GetTeamNumber() != GetLocalPlayerTeam() )
+			{
+				const char *pEffectName = ( GetDisguiseTeam() == TF_TEAM_RED ) ? "critgun_weaponmodel_red" : "critgun_weaponmodel_blu";
+				m_pCritEffect = m_hCritEffectHost->ParticleProp()->Create( pEffectName, PATTACH_ABSORIGIN_FOLLOW );
+			}
+			else
+			{
+				const char *pEffectName = ( m_pOuter->GetTeamNumber() == TF_TEAM_RED ) ? "critgun_weaponmodel_red" : "critgun_weaponmodel_blu";
+				m_pCritEffect = m_hCritEffectHost->ParticleProp()->Create( pEffectName, PATTACH_ABSORIGIN_FOLLOW );
+			}
+		}
+
+		if ( !m_pCritSound )
+		{
+			CSoundEnvelopeController &controller = CSoundEnvelopeController::GetController();
+			CLocalPlayerFilter filter;
+			m_pCritSound = controller.SoundCreate( filter, m_pOuter->entindex(), "Weapon_General.CritPower" );
+			controller.Play( m_pCritSound, 1.0, 100 );
+		}
+	}
+	else
+	{
+		if ( m_pCritEffect )
+		{
+			if ( m_hCritEffectHost.Get() )
+				m_hCritEffectHost->ParticleProp()->StopEmission( m_pCritEffect );
+
+			m_pCritEffect = NULL;
+		}
+
+		m_hCritEffectHost = NULL;
+
+		if ( m_pCritSound )
+		{
+			CSoundEnvelopeController::GetController().SoundDestroy( m_pCritSound );
+			m_pCritSound = NULL;
+		}
+	}
+}
 #endif
 
 #ifdef GAME_DLL
@@ -2263,20 +2564,6 @@ void CTFPlayer::TeamFortress_SetSpeed()
 	{
 		float flMaxDisguiseSpeed = GetPlayerClassData( m_Shared.GetDisguiseClass() )->m_flMaxSpeed;
 		maxfbspeed = min( flMaxDisguiseSpeed, maxfbspeed );
-	}
-
-	// Second, see if any flags are slowing them down
-	if ( HasItem() && GetItem()->GetItemID() == TF_ITEM_CAPTURE_FLAG )
-	{
-		CCaptureFlag *pFlag = dynamic_cast<CCaptureFlag*>( GetItem() );
-
-		if ( pFlag )
-		{
-			if ( pFlag->GetGameType() == TF_FLAGTYPE_ATTACK_DEFEND || pFlag->GetGameType() == TF_FLAGTYPE_TERRITORY_CONTROL )
-			{
-				maxfbspeed *= 0.5;
-			}
-		}
 	}
 
 	// if they're a sniper, and they're aiming, their speed must be 80 or less
