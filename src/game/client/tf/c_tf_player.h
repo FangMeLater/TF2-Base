@@ -48,6 +48,10 @@ public:
 
 	virtual void UpdateOnRemove( void );
 
+	virtual void FireGameEvent( IGameEvent *event );
+
+	void UpdateOverhealEffect( void );
+
 	virtual const QAngle& GetRenderAngles();
 	virtual void UpdateClientSideAnimation();
 	virtual void SetDormant( bool bDormant );
@@ -118,8 +122,13 @@ public:
 	bool			StartGestureSceneEvent( CSceneEventInfo *info, CChoreoScene *scene, CChoreoEvent *event, CChoreoActor *actor, CBaseEntity *pTarget );
 	void			TurnOnTauntCam( void );
 	void			TurnOffTauntCam( void );
+	void			TauntCamInterpolation( void );
+	virtual void	ThirdPersonSwitch( bool bThirdperson );
 
 	virtual void	InitPhonemeMappings();
+
+	virtual void	GetGlowEffectColor( float *r, float *g, float *b );
+	void UpdateGlowColor( void );
 
 	// Gibs.
 	void InitPlayerGibs( void );
@@ -249,6 +258,7 @@ private:
 	void InitInvulnerableMaterial( void );
 
 	bool				m_bWasTaunting;
+	float				m_flTauntOffTime;
 	CameraThirdData_t	m_TauntCameraData;
 
 	QAngle				m_angTauntPredViewAngles;
@@ -328,6 +338,8 @@ public:
 
 	CMaterialReference	m_InvulnerableMaterial;
 
+	// Overheal
+	CNewParticleEffect *m_pOverhealEffect;
 
 	// Burning
 	CSoundPatch			*m_pBurningSound;
@@ -356,6 +368,9 @@ public:
 
 	bool			m_bUpdatePartyHat;
 	CHandle<C_PlayerAttachedModel>	m_hPartyHat;
+
+	// Overheal particle fix for spies
+	int				m_iOldOverhealTeamNum;
 
 private:
 

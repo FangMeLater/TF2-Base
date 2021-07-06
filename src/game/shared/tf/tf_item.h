@@ -41,6 +41,7 @@ public:
 #ifdef CLIENT_DLL
 	virtual bool ShouldDraw();
 	virtual ShadowType_t ShadowCastType();
+	virtual bool ShouldHideGlowEffect( void ) { return false; }
 #endif
 };
 

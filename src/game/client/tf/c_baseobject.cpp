@@ -25,6 +25,7 @@
 #include "tf_hud_building_status.h"
 #include "cl_animevent.h"
 #include "eventlist.h"
+#include "tf_gamerules.h"
 
 // memdbgon must be the last include file in a .cpp file!!!
 #include "tier0/memdbgon.h"
@@ -755,6 +756,23 @@ void C_BaseObject::DisplayHintTo( C_BasePlayer *pPlayer )
 				bHintPlayed = pPlayer->HintMessage( HINT_ENGINEER_REPAIR_OBJECT, false, true );
 			}
 		}
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_BaseObject::GetGlowEffectColor( float *r, float *g, float *b )
+{
+	if ( TFGameRules() )
+	{
+		TFGameRules()->GetTeamGlowColor( GetTeamNumber(), *r, *g, *b );
+	}
+	else
+	{
+		*r = 0.76f;
+		*g = 0.76f;
+		*b = 0.76f;
 	}
 }
 

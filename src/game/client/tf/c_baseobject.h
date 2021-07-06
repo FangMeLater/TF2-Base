@@ -197,6 +197,8 @@ public:
 public:
 	virtual void		DisplayHintTo( C_BasePlayer *pPlayer );
 
+	virtual void		GetGlowEffectColor( float *r, float *g, float *b );
+
 protected:
 	virtual void		UpdateDamageEffects( BuildingDamageLevel_t damageLevel ) {}	// default is no effects
 

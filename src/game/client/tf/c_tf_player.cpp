@@ -1507,6 +1507,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_flBurnEffectEndTime = 0;
 	m_pDisguisingEffect = NULL;
 	m_pSaveMeEffect = NULL;
+	m_pOverhealEffect = NULL;
 	
 	m_aGibs.Purge();
 
@@ -1518,6 +1519,7 @@ C_TFPlayer::C_TFPlayer() :
 	m_bIsDisplayingNemesisIcon = false;
 
 	m_bWasTaunting = false;
+	m_flTauntOffTime = 0.0f;
 	m_angTauntPredViewAngles.Init();
 	m_angTauntEngViewAngles.Init();
 
@@ -1528,6 +1530,8 @@ C_TFPlayer::C_TFPlayer() :
 	m_bWaterExitEffectActive = false;
 
 	m_bUpdateObjectHudState = false;
+
+	ListenForGameEvent( "localplayer_changeteam" );
 }
 
 C_TFPlayer::~C_TFPlayer()
@@ -1733,6 +1737,11 @@ void C_TFPlayer::OnDataChanged( DataUpdateType_t updateType )
 	{
 		// If we were just fully healed, remove all decals
 		RemoveAllDecals();
+	}
+
+	if ( ( m_iOldHealth != m_iHealth ) || ( m_iOldTeam != GetTeamNumber() ) )
+	{
+		UpdateGlowColor();
 	}
 
 	// Detect class changes
@@ -1966,6 +1975,66 @@ void C_TFPlayer::StopBurningSound( void )
 		CSoundEnvelopeController::GetController().SoundDestroy( m_pBurningSound );
 		m_pBurningSound = NULL;
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_TFPlayer::UpdateGlowColor( void )
+{
+	CGlowObject* pGlowObject = GetGlowObject();
+	if ( pGlowObject )
+	{
+		float r, g, b;
+		GetGlowEffectColor( &r, &g, &b );
+
+		pGlowObject->SetColor( Vector( r, g, b ) );
+	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose: 
+//-----------------------------------------------------------------------------
+void C_TFPlayer::GetGlowEffectColor( float *r, float *g, float *b )
+{
+	int nTeam = GetTeamNumber();
+
+	C_TFPlayer *pLocalPlayer = GetLocalTFPlayer();
+	// In CTF, show health color glow for alive player
+	if ( pLocalPlayer && pLocalPlayer->IsAlive() && TFGameRules() && ( TFGameRules()->GetGameType() == TF_GAMETYPE_CTF ) && HasTheFlag() )
+	{
+		float flHealth = (float)GetHealth() / (float)GetMaxHealth();
+
+		if ( flHealth > 0.6 )
+		{
+			*r = 0.33f;
+			*g = 0.75f;
+			*b = 0.23f;
+		}
+		else if( flHealth > 0.3 )
+		{
+			*r = 0.75f;
+			*g = 0.72f;
+			*b = 0.23f;
+		}
+		else
+		{
+			*r = 0.75f;
+			*g = 0.23f;
+			*b = 0.23f;
+		}
+		return;
+	}
+
+	if ( !engine->IsHLTV() && ( GetLocalPlayerTeam() >= FIRST_GAME_TEAM ) )
+	{
+		if ( IsPlayerClass( TF_CLASS_SPY ) && m_Shared.InCond( TF_COND_DISGUISED ) && ( GetTeamNumber() != GetLocalPlayerTeam() ) )
+		{
+			nTeam = m_Shared.GetDisguiseTeam();
+		}
+	}
+
+	TFGameRules()->GetTeamGlowColor( nTeam, *r, *g, *b );
 }
 
 //-----------------------------------------------------------------------------
@@ -2223,7 +2292,7 @@ void C_TFPlayer::TurnOnTauntCam( void )
 	m_TauntCameraData.m_flPitch = tf_tauntcam_pitch.GetFloat();
 	m_TauntCameraData.m_flYaw =  tf_tauntcam_yaw.GetFloat();
 	m_TauntCameraData.m_flDist = tf_tauntcam_dist.GetFloat();
-	m_TauntCameraData.m_flLag = 4.0f;
+	m_TauntCameraData.m_flLag = 1.0f;
 	m_TauntCameraData.m_vecHullMin.Init( -9.0f, -9.0f, -9.0f );
 	m_TauntCameraData.m_vecHullMax.Init( 9.0f, 9.0f, 9.0f );
 
@@ -2247,6 +2316,9 @@ void C_TFPlayer::TurnOnTauntCam( void )
 //-----------------------------------------------------------------------------
 void C_TFPlayer::TurnOffTauntCam( void )
 {
+	m_bWasTaunting = false;
+	m_flTauntOffTime = 0.0f;
+
 	if ( !IsLocalPlayer() )
 		return;	
 
@@ -2287,11 +2359,12 @@ void C_TFPlayer::HandleTaunting( void )
 	C_TFPlayer *pLocalPlayer = C_TFPlayer::GetLocalTFPlayer();
 
 	// Clear the taunt slot.
-	if ( !m_bWasTaunting && (
+	if ( ( !m_bWasTaunting || m_flTauntOffTime != 0.0f ) && (
 		m_Shared.InCond( TF_COND_TAUNTING ) ||
 		m_Shared.IsLoser() ) )
 	{
 		m_bWasTaunting = true;
+		m_flTauntOffTime = 0.0f;
 
 		// Handle the camera for the local player.
 		if ( pLocalPlayer )
@@ -2300,21 +2373,51 @@ void C_TFPlayer::HandleTaunting( void )
 		}
 	}
 
-		if ( m_bWasTaunting && (
+		if ( m_bWasTaunting && m_flTauntOffTime == 0.0f && (
 		!m_Shared.InCond( TF_COND_TAUNTING ) &&
 		!m_Shared.IsLoser() ) )
 	{
-		m_bWasTaunting = false;
+		m_flTauntOffTime = gpGlobals->curtime;
 
 		// Clear the vcd slot.
 		m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_VCD );
+	}
 
-		// Handle the camera for the local player.
-		if ( pLocalPlayer )
+	TauntCamInterpolation();
+}
+
+//---------------------------------------------------------------------------- -
+// Purpose:
+//-----------------------------------------------------------------------------
+void C_TFPlayer::TauntCamInterpolation( void )
+{
+	if ( m_flTauntOffTime != 0.0f )
+	{
+		// Pull the camera back in over the course of half a second.
+		float flDist = RemapValClamped( gpGlobals->curtime - m_flTauntOffTime, 0.0f, 0.5f, tf_tauntcam_dist.GetFloat(), 0.0f );
+
+		// Snap the camera back into first person
+		if ( flDist == 0.0f || !m_bWasTaunting || !IsAlive() || g_ThirdPersonManager.WantToUseGameThirdPerson() )
 		{
 			TurnOffTauntCam();
 		}
+		else
+		{
+			g_ThirdPersonManager.SetDesiredCameraOffset( Vector( flDist, 0.0f, 0.0f ) );
+		}
 	}
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void C_TFPlayer::ThirdPersonSwitch( bool bThirdPerson )
+{
+	BaseClass::ThirdPersonSwitch( bThirdPerson );
+
+	// Update any effects affected by camera mode.
+	m_Shared.UpdateCritBoostEffect();
+	UpdateOverhealEffect();
 }
 
 //-----------------------------------------------------------------------------
@@ -2400,6 +2503,19 @@ void C_TFPlayer::ClientThink()
 		{
 			ParticleProp()->StopEmissionAndDestroyImmediately( m_pSaveMeEffect );
 			m_pSaveMeEffect = NULL;
+		}
+	}
+
+	if ( HasTheFlag() && GetGlowObject() )
+	{
+		C_TFItem *pFlag = GetItem();
+		if ( pFlag->ShouldHideGlowEffect() )
+		{
+			GetGlowObject()->SetEntity( NULL );
+		}
+		else
+		{
+			GetGlowObject()->SetEntity( this );
 		}
 	}
 }
@@ -3493,6 +3609,7 @@ void C_TFPlayer::ClientPlayerRespawn( void )
 		//ResetLatched();
 
 		// Reset the camera.
+		m_bWasTaunting = false;
 		HandleTaunting();
 
 		ResetToneMapping(1.0);
@@ -4071,6 +4188,79 @@ void C_TFPlayer::CalcView( Vector &eyeOrigin, QAngle &eyeAngles, float &zNear, f
 	BaseClass::CalcView( eyeOrigin, eyeAngles, zNear, zFar, fov );
 }
 
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void C_TFPlayer::UpdateOverhealEffect( void )
+{
+	bool bShouldShow = true;
+	int iTeam = GetTeamNumber();
+
+	if ( !m_Shared.InCond( TF_COND_HEALTH_OVERHEALED ) )
+	{
+		bShouldShow = false;
+	}
+	else if ( InFirstPersonView() )
+	{
+		bShouldShow = false;
+	}
+	else if ( IsEnemyPlayer() )
+	{
+		if ( m_Shared.IsStealthed() )
+		{
+			// Don't give away cloaked spies.
+			bShouldShow = false;
+		}
+		if ( m_Shared.InCond( TF_COND_DISGUISED ) )
+		{
+			iTeam = m_Shared.GetDisguiseTeam();
+		}
+	}
+
+	if ( bShouldShow )
+	{
+		// If we've undisguised recently change the overheal particle color
+		if ( m_pOverhealEffect && iTeam != m_iOldOverhealTeamNum )
+		{
+			ParticleProp()->StopEmission( m_pOverhealEffect );
+			m_pOverhealEffect = NULL;
+		}
+
+		if ( !m_pOverhealEffect )
+		{
+			char *pszEffect = NULL;
+
+			switch( iTeam )
+			{
+			case TF_TEAM_BLUE:
+				pszEffect = "overhealedplayer_blue_pluses";
+				break;
+			case TF_TEAM_RED:
+				pszEffect = "overhealedplayer_red_pluses";
+				break;
+			default:
+				break;
+			}
+
+			if ( pszEffect )
+			{
+				m_pOverhealEffect = ParticleProp()->Create( pszEffect, PATTACH_ABSORIGIN_FOLLOW );
+			}
+		}
+	}
+	else
+	{
+		if ( m_pOverhealEffect )
+		{
+			ParticleProp()->StopEmission( m_pOverhealEffect );
+			m_pOverhealEffect = NULL;
+		}
+	}
+
+	// Update our overheal state
+	m_iOldOverhealTeamNum = iTeam;
+}
+
 static void cc_tf_crashclient()
 {
 	C_TFPlayer *pPlayer = NULL;
@@ -4084,6 +4274,26 @@ static ConCommand tf_crashclient( "tf_crashclient", cc_tf_crashclient, "Crashes 
 void C_TFPlayer::ForceUpdateObjectHudState( void )
 {
 	m_bUpdateObjectHudState = true;
+}
+
+//-----------------------------------------------------------------------------
+// Purpose:
+//-----------------------------------------------------------------------------
+void C_TFPlayer::FireGameEvent( IGameEvent *event )
+{
+	if ( V_strcmp( event->GetName(), "localplayer_changeteam" ) == 0 )
+	{
+		if ( !IsLocalPlayer() )
+		{
+			// Update any effects affected by disguise.
+			m_Shared.UpdateCritBoostEffect();
+			UpdateOverhealEffect();
+		}
+	}
+	else
+	{
+		BaseClass::FireGameEvent( event );
+	}
 }
 
 #include "c_obj_sentrygun.h"

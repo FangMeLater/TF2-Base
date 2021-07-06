@@ -620,6 +620,12 @@ void CTFPlayerShared::OnConditionAdded( int nCond )
 		OnAddCritboosted();
 		break;
 
+	case TF_COND_HEALTH_OVERHEALED:
+#ifdef CLIENT_DLL
+		m_pOuter->UpdateOverhealEffect();
+#endif
+		break;
+
 	default:
 		break;
 	}
@@ -678,6 +684,12 @@ void CTFPlayerShared::OnConditionRemoved( int nCond )
 	case TF_COND_CRITBOOSTED_CARD_EFFECT:
 	case TF_COND_CRITBOOSTED_RUNE_TEMP:
 		OnRemoveCritboosted();
+		break;
+
+	case TF_COND_HEALTH_OVERHEALED:
+#ifdef CLIENT_DLL
+		m_pOuter->UpdateOverhealEffect();
+#endif
 		break;
 
 	default:
@@ -887,6 +899,21 @@ void CTFPlayerShared::ConditionGameRulesThink( void )
 		}
 	}
 
+	if ( m_pOuter->GetHealth() > m_pOuter->GetMaxHealth() )
+	{
+		if ( !InCond( TF_COND_HEALTH_OVERHEALED ) )
+		{
+			AddCond( TF_COND_HEALTH_OVERHEALED );
+		}
+	}
+	else
+	{
+		if ( InCond( TF_COND_HEALTH_OVERHEALED ) )
+		{
+			RemoveCond( TF_COND_HEALTH_OVERHEALED );
+		}
+	}
+
 	// Taunt
 	if ( InCond( TF_COND_TAUNTING ) )
 	{
@@ -1071,6 +1098,7 @@ void CTFPlayerShared::OnDisguiseChanged( void )
 	RecalcDisguiseWeapon();
 	m_pOuter->UpdateRecentlyTeleportedEffect();
 	UpdateCritBoostEffect();
+	m_pOuter->UpdateOverhealEffect();
 }
 #endif
 
@@ -1277,6 +1305,7 @@ void CTFPlayerShared::OnAddStealthed( void )
 #ifdef CLIENT_DLL
 	m_pOuter->EmitSound( "Player.Spy_Cloak" );
 	UpdateCritBoostEffect();
+	m_pOuter->UpdateOverhealEffect();
 	m_pOuter->RemoveAllDecals();
 	m_pOuter->UpdateRecentlyTeleportedEffect();
 #else
@@ -1312,6 +1341,7 @@ void CTFPlayerShared::OnRemoveStealthed( void )
 	m_pOuter->EmitSound( "Player.Spy_UnCloak" );
 	UpdateCritBoostEffect();
 	m_pOuter->UpdateRecentlyTeleportedEffect();
+	m_pOuter->UpdateOverhealEffect();
 #endif
 
 	m_pOuter->HolsterOffHandWeapon();
@@ -1362,6 +1392,9 @@ void CTFPlayerShared::OnRemoveDisguised( void )
 
 	// They may have called for medic and created a visible medic bubble
 	m_pOuter->ParticleProp()->StopParticlesNamed( "speech_mediccall", true );
+
+	UpdateCritBoostEffect();
+	m_pOuter->UpdateOverhealEffect();
 
 #else
 	m_nDisguiseTeam  = TF_SPY_UNDEFINED;
@@ -2796,6 +2829,11 @@ bool CTFPlayer::Weapon_ShouldSetLast( CBaseCombatWeapon *pOldWeapon, CBaseCombat
 bool CTFPlayer::Weapon_Switch( CBaseCombatWeapon *pWeapon, int viewmodelindex )
 {
 	m_PlayerAnimState->ResetGestureSlot( GESTURE_SLOT_ATTACK_AND_RELOAD );
+
+#ifdef CLIENT_DLL
+	m_Shared.UpdateCritBoostEffect();
+#endif
+
 	return BaseClass::Weapon_Switch( pWeapon, viewmodelindex );
 }
 

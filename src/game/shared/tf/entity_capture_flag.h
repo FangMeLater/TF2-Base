@@ -16,10 +16,13 @@
 #define CCaptureFlag C_CaptureFlag
 #endif
 
-#define TF_FLAG_THINK_TIME			1.0f
+#define TF_FLAG_THINK_TIME			0.25f
 #define	TF_FLAG_OWNER_PICKUP_TIME	3.0f
 
 #define TF_FLAG_MODEL				"models/flag/briefcase.mdl"
+#define TF_FLAG_ICON				"../hud/objectives_flagpanel_carried"
+#define TF_FLAG_EFFECT				"player_intel_papertrail"
+#define TF_FLAG_TRAIL				"flagtrail"
 
 //=============================================================================
 //
@@ -88,25 +91,6 @@
 	#define CBaseAnimating C_BaseAnimating
 #endif
 
-#ifdef CLIENT_DLL
-
-typedef struct
-{
-	float maxProgress;
-
-	float vert1x;
-	float vert1y;
-	float vert2x;
-	float vert2y;
-
-	int swipe_dir_x;
-	int swipe_dir_y;
-} progress_segment_t;
-
-extern progress_segment_t Segments[8];
-
-#endif
-
 class CCaptureFlagReturnIcon: public CBaseAnimating
 {
 public:
@@ -159,16 +143,20 @@ public:
 
 	void			FlagTouch( CBaseEntity *pOther );
 
-	const char		*GetTrailEffect( int nTeam, char *buf , size_t buflen );
-
 	bool			IsDisabled( void );
 	void			SetDisabled( bool bDisabled );
+	void			SetVisibleWhenDisabled( bool bVisible );
+	bool			IsVisibleWhenDisabled( void ) { return m_bVisibleWhenDisabled; }
+	bool			IsPoisonous( void ) { return m_flTimeToSetPoisonous > 0 && gpGlobals->curtime > m_flTimeToSetPoisonous; }
+	float			GetPoisonTime( void ) const { return m_flTimeToSetPoisonous; }
 
 	CBaseEntity		*GetPrevOwner( void ) { return m_hPrevOwner.Get(); }
 
 // Game DLL Functions
 #ifdef GAME_DLL
 	virtual void	Activate( void );
+
+	static CCaptureFlag*	Create( const Vector& vecOrigin, const char *pszModelName, int nFlagType );
 
 	// Input handlers
 	void			InputEnable( inputdata_t &inputdata );
@@ -178,7 +166,7 @@ public:
 
 	void			Think( void );
 	
-	void			SetFlagStatus( int iStatus );
+	void			SetFlagStatus( int iStatus, CBasePlayer *pNewOwner = NULL );
 	int				GetFlagStatus( void ) { return m_nFlagStatus; };
 	void			ResetFlagReturnTime( void ) { m_flResetTime = 0; }
 	void			SetFlagReturnIn( float flTime )
@@ -218,6 +206,7 @@ public:
 	float			GetReturnProgress( void );
 
 	void			UpdateGlowEffect( void );
+	virtual bool	ShouldHideGlowEffect( void );
 
 #endif
 
@@ -234,30 +223,49 @@ public:
 	void			Reset( void );
 	void			ResetMessage( void );
 
+	const char		*GetFlagModel( void );
+	void			GetHudIcon( int nTeam, char *pchName, int nBuffSize );
+	const char		*GetPaperEffect( void );
+	void			GetTrailEffect( int nTeam, char *pchName, int nBuffSize );
+
+	int				GetPointValue() const { return m_nPointValue.Get(); }
+
 	CNetworkVar( int,	m_nFlagStatus );
 
-	int					m_nUseTrailEffect;
-	bool				m_bVisibleWhenDisabled;
-	string_t			m_szHudIcon;
-	string_t			m_szModel;
-	string_t			m_szPaperEffect;
-	string_t			m_szTrailEffect;
-	CSpriteTrail		*m_pGlowTrail;
-
 private:
+#ifdef GAME_DLL
+	void			SetGlowEnabled( bool bGlowEnabled ) { m_bGlowEnabled = bGlowEnabled; }
+#endif
+
+	bool			IsGlowEnabled( void ) { return m_bGlowEnabled; }
 
 	CNetworkVar( bool,	m_bDisabled );	// Enabled/Disabled?
+	CNetworkVar( bool,	m_bVisibleWhenDisabled );
 	CNetworkVar( int,	m_nGameType );	// Type of game this flag will be used for.
 
 	CNetworkVar( float,	m_flResetTime );		// Time until the flag is placed back at spawn.
 	CNetworkVar( float, m_flMaxResetTime );		// Time the flag takes to return in the current mode
 	CNetworkVar( float, m_flNeutralTime );	// Time until the flag becomes neutral (used for the invade gametype)
 	CNetworkHandle( CBaseEntity, m_hPrevOwner );
+	CNetworkVar( int, m_nPointValue );	// Value per scoring, for Robot/Player Destruction
+	CNetworkVar( float, m_flAutoCapTime );
+	CNetworkVar( bool, m_bGlowEnabled );
+	CNetworkString( m_szModel, MAX_PATH );
+	CNetworkString( m_szHudIcon, MAX_PATH );
+	CNetworkString( m_szPaperEffect, MAX_PATH );
+	CNetworkString( m_szTrailEffect, MAX_PATH );
+	CNetworkVar( int, m_nUseTrailEffect );
+	CNetworkVar( float, m_flTimeToSetPoisonous );
 
 	int				m_iOriginalTeam;
 	float			m_flOwnerPickupTime;
 
-	EHANDLE		m_hReturnIcon;
+	float           m_flLastPickupTime; // What the time was of the last pickup by any player.
+	float           m_flLastResetDuration; // How long was the last time to reset before being picked up?
+
+	bool			m_bReturnBetweenWaves; // Used in MvM mode to determine if the flag should return between waves.
+
+	EHANDLE			m_hReturnIcon;
 
 #ifdef GAME_DLL
 	Vector			m_vecResetPos;		// The position the flag should respawn (reset) at.
@@ -269,19 +277,27 @@ private:
 	COutputEvent	m_outputOnCapture;	// Fired when the flag is captured.
 	COutputEvent	m_outputOnTouchSameTeam;
 
+	string_t		m_iszHudIcon;
+	string_t		m_iszModel;
+	string_t		m_iszPaperEffect;
+	string_t		m_iszTrailEffect;
 
 	bool			m_bAllowOwnerPickup;
-
-
 	bool			m_bCaptured;
+
+	CSpriteTrail	*m_pGlowTrail;
 #else
 
 	IMaterial	*m_pReturnProgressMaterial_Empty;		// For labels above players' heads.
 	IMaterial	*m_pReturnProgressMaterial_Full;		
 
 	int			m_nOldFlagStatus;
+	EHANDLE		m_hOldOwner;
 
-	int			m_iGlowEffectHandle;
+	CGlowObject			*m_pGlowEffect;
+	CGlowObject			*m_pCarrierGlowEffect;
+
+	bool		m_bOldGlowEnabled;
 
 #endif
 

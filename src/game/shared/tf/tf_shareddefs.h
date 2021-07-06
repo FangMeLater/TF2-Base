@@ -133,7 +133,9 @@ enum
 	TF_FLAGTYPE_ATTACK_DEFEND,
 	TF_FLAGTYPE_TERRITORY_CONTROL,
 	TF_FLAGTYPE_INVADE,
-	TF_FLAGTYPE_KINGOFTHEHILL,
+	TF_FLAGTYPE_RESOURCE_CONTROL,
+	TF_FLAGTYPE_ROBOT_DESTRUCTION,
+	TF_FLAGTYPE_PLAYER_DESTRUCTION
 };
 
 //-----------------------------------------------------------------------------
@@ -144,6 +146,12 @@ enum
 	TF_GAMETYPE_UNDEFINED = 0,
 	TF_GAMETYPE_CTF,
 	TF_GAMETYPE_CP,
+	TF_GAMETYPE_ESCORT,
+	TF_GAMETYPE_ARENA,
+	TF_GAMETYPE_MVM,
+	TF_GAMETYPE_RD,
+	TF_GAMETYPE_PASSTIME,
+	TF_GAMETYPE_PD,
 };
 extern const char *g_aGameTypeNames[];	// localized gametype names
 
@@ -505,7 +513,8 @@ enum {
 	TF_FLAGEVENT_PICKUP = 1,
 	TF_FLAGEVENT_CAPTURE,
 	TF_FLAGEVENT_DEFEND,
-	TF_FLAGEVENT_DROPPED
+	TF_FLAGEVENT_DROPPED,
+	TF_FLAGEVENT_RETURNED
 };
 
 //-----------------------------------------------------------------------------
@@ -518,7 +527,7 @@ enum {
 // Assist-damage constants
 //-----------------------------------------------------------------------------
 #define TF_TIME_ASSIST_KILL				3.0f	// Time window for a recent damager to get credit for an assist for a kill
-#define TF_TIME_ENV_DEATH_KILL_CREDIT	5.0f
+#define TF_TIME_ENV_DEATH_KILL_CREDIT	5.0f	// Time window for a recent damager to get credit for an environmental kill
 #define TF_TIME_SUICIDE_KILL_CREDIT		10.0f	// Time window for a recent damager to get credit for a kill if target suicides
 
 //-----------------------------------------------------------------------------
@@ -751,9 +760,9 @@ enum
 #define SENTRYGUN_EYE_OFFSET_LEVEL_1	Vector( 0, 0, 32 )
 #define SENTRYGUN_EYE_OFFSET_LEVEL_2	Vector( 0, 0, 40 )
 #define SENTRYGUN_EYE_OFFSET_LEVEL_3	Vector( 0, 0, 46 )
-#define SENTRYGUN_MAX_SHELLS_1			100
-#define SENTRYGUN_MAX_SHELLS_2			120
-#define SENTRYGUN_MAX_SHELLS_3			144
+#define SENTRYGUN_MAX_SHELLS_1			150
+#define SENTRYGUN_MAX_SHELLS_2			200
+#define SENTRYGUN_MAX_SHELLS_3			200
 #define SENTRYGUN_MAX_ROCKETS			20
 
 // Dispenser's maximum carrying capability
